@@ -126,9 +126,23 @@ function showAuthScreen(sb) {
   btn.onclick = async () => {
     msg.textContent = "…";
     const args = { email: email.value.trim(), password: pass.value };
-    const { error } = mode === "in" ? await sb.auth.signInWithPassword(args) : await sb.auth.signUp(args);
-    if (error) { msg.textContent = traduire(error.message); return; }
-    msg.textContent = mode === "up" ? "Compte créé. Connexion…" : "Connexion…";
+    if (mode === "in") {
+      const { error } = await sb.auth.signInWithPassword(args);
+      if (error) { msg.textContent = traduire(error.message); return; }
+      msg.textContent = "Connexion…";
+    } else {
+      const { data, error } = await sb.auth.signUp(args);
+      if (error) { msg.textContent = traduire(error.message); return; }
+      if (!data.session) {
+        // Confirmation par email activée : on bascule en mode connexion.
+        msg.textContent = "Compte créé ! Vérifie ta boîte mail pour confirmer, puis connecte-toi.";
+        mode = "in";
+        btn.textContent = "Se connecter";
+        toggle.textContent = "Créer un compte";
+      } else {
+        msg.textContent = "Compte créé. Connexion…";
+      }
+    }
   };
   toggle.onclick = () => {
     mode = mode === "in" ? "up" : "in";
