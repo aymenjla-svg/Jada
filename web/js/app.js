@@ -4,6 +4,7 @@ import { buildVaccines, uuid } from "./data.js";
 import { el, clear, toast } from "./ui.js";
 import { renderMaman } from "./views/maman.js";
 import { renderSante } from "./views/sante.js";
+import { welcomeSound } from "./sound.js";
 
 const root = () => document.getElementById("root");
 
@@ -20,6 +21,7 @@ const ctx = {
 // ----------------------------------------------------------------
 async function boot() {
   registerSW();
+  welcomeSound();
 
   if (SYNC_ENABLED) {
     const ok = await ensureAuth();
