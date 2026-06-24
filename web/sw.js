@@ -2,7 +2,7 @@
 // instantané et un fonctionnement hors-ligne (les données, elles, ont besoin du
 // réseau en mode synchro).
 
-const CACHE = "jada-v5";
+const CACHE = "jada-v6";
 const SHELL = [
   "./",
   "./index.html",
@@ -36,14 +36,13 @@ self.addEventListener("fetch", (e) => {
   // On ne met en cache que nos propres fichiers (même origine). Supabase / CDN passent direct.
   if (e.request.method !== "GET" || url.origin !== location.origin) return;
 
+  // Réseau d'abord : on sert toujours la dernière version quand il y a du réseau,
+  // et on retombe sur le cache uniquement hors-ligne. Évite les versions figées.
   e.respondWith(
-    caches.match(e.request).then((cached) =>
-      cached ||
-      fetch(e.request).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
-        return res;
-      }).catch(() => cached)
-    )
+    fetch(e.request).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
