@@ -217,6 +217,7 @@ input[type=range] { width: 100%; accent-color: var(--pink-deep); }
 
 .auth { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; max-width: 420px; margin: 0 auto; text-align: center; }
 .auth .logo { font-family: var(--font-display); font-weight: 600; font-size: 52px; }
+.auth .logo-img { width: 240px; max-width: 70%; height: auto; margin-bottom: 4px; }
 .auth .tag { color: var(--ink-2); margin-bottom: 26px; }
 .auth .card { width: 100%; text-align: left; }
 .auth .toggle { margin-top: 14px; font-size: 14px; color: var(--ink-2); }

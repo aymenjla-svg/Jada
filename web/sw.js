@@ -2,7 +2,7 @@
 // instantané et un fonctionnement hors-ligne (les données, elles, ont besoin du
 // réseau en mode synchro).
 
-const CACHE = "jada-v3";
+const CACHE = "jada-v4";
 const SHELL = [
   "./",
   "./index.html",
@@ -17,6 +17,7 @@ const SHELL = [
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
+  "./icons/logo.png",
 ];
 
 self.addEventListener("install", (e) => {

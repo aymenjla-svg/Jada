@@ -89,7 +89,7 @@ function onboarding() {
   };
 
   return el("div", { class: "auth" }, [
-    el("div", { class: "logo" }, "JADA"),
+    el("img", { class: "logo-img", src: "icons/logo.png", alt: "JADA" }),
     el("div", { class: "tag" }, "Le quotidien de votre bébé, à deux."),
     el("div", { class: "card" }, [
       f("Prénom", name), f("Date de naissance", birth),
@@ -139,7 +139,7 @@ function showAuthScreen(sb) {
 
   clear(root());
   root().appendChild(el("div", { class: "auth" }, [
-    el("div", { class: "logo" }, "JADA"),
+    el("img", { class: "logo-img", src: "icons/logo.png", alt: "JADA" }),
     el("div", { class: "tag" }, "Connectez-vous pour retrouver vos données partagées."),
     el("div", { class: "card" }, [
       el("div", { class: "field" }, [el("label", {}, "Email"), email]),
