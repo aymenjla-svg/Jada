@@ -55,6 +55,9 @@ export function renderSante(ctx) {
 
     el("div", { class: "section-title" }, "Prochaines échéances"),
     ech,
+
+    el("div", { class: "section-title" }, "Rendez-vous"),
+    apptsCard(ctx, appts),
     addRow("Ajouter un rendez-vous", () => sheetAppointment(ctx)),
 
     el("div", { class: "section-title" }, "Courbe de croissance"),
@@ -82,6 +85,36 @@ function echeance(ic, title, sub) {
 
 function addRow(label, onclick) {
   return el("div", { class: "row-add" }, [el("button", { class: "badge", onclick }, "＋ " + label)]);
+}
+
+// Liste complète des rendez-vous (à venir d'abord, puis passés), avec suppression.
+function apptsCard(ctx, appts) {
+  const card = el("div", { class: "card tight" });
+  if (!appts.length) {
+    card.appendChild(el("div", { class: "empty" }, "Aucun rendez-vous. Ajoutez-en un 👇"));
+    return card;
+  }
+  const now = Date.now();
+  const sorted = [...appts].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const upcoming = sorted.filter((a) => new Date(a.date).getTime() >= now);
+  const past = sorted.filter((a) => new Date(a.date).getTime() < now).reverse();
+  [...upcoming, ...past].forEach((a, i, arr) => {
+    const isPast = new Date(a.date).getTime() < now;
+    const sub = [fmtFull(a.date), a.practitioner, a.location].filter(Boolean).join(" · ");
+    const del = el("button", { class: "appt-del", title: "Supprimer",
+      onclick: async () => {
+        if (confirm(`Supprimer le rendez-vous « ${a.title} » ?`)) await ctx.store.remove("appointments", a.id);
+      } }, "✕");
+    card.appendChild(el("div", { class: "appt" + (isPast ? " past" : "") }, [
+      el("div", { class: "avatar pink" }, "🩺"),
+      el("div", { style: "flex:1;min-width:0" }, [
+        el("div", { style: "font-weight:500" }, a.title),
+        el("div", { class: "appt-sub" }, sub),
+      ]),
+      del,
+    ]));
+  });
+  return card;
 }
 
 // ---------- Courbe (SVG fait main) ----------

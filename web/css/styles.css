@@ -215,6 +215,15 @@ input[type=range] { width: 100%; accent-color: var(--pink-deep); }
 .vaccine .name { font-size: 15px; }
 .vaccine .when { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); }
 
+/* Rendez-vous */
+.appt { display: flex; align-items: center; gap: 12px; padding: 10px 8px; }
+.appt + .appt { border-top: 1px solid rgba(255,255,255,.55); }
+.appt.past { opacity: .55; }
+.appt .avatar { width: 40px; height: 40px; font-size: 18px; }
+.appt-sub { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.appt-del { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(255,255,255,.5); color: var(--ink-2); font-size: 14px; cursor: pointer; }
+.appt-del:active { background: rgba(232,160,214,.25); }
+
 .echeance { display: flex; align-items: center; gap: 14px; }
 .echeance + .echeance { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.55); }
 
