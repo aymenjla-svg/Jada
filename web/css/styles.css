@@ -26,6 +26,7 @@
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "DM Sans", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-round: "Baloo 2", system-ui, sans-serif;
 
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -53,9 +54,30 @@ body {
 
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-.screen-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; padding-top: 8px; }
+.screen-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-top: 8px; }
 .greeting { font-size: 15px; color: var(--ink-2); }
 .title-xl { font-family: var(--font-display); font-weight: 600; font-size: 30px; line-height: 1.1; }
+
+/* En-tête « mignon » : avatar + bonjour + prénom */
+.hello { display: flex; align-items: center; gap: 13px; }
+.hello-av {
+  width: 54px; height: 54px; border-radius: 50%; flex: 0 0 auto;
+  display: grid; place-items: center;
+  font-family: var(--font-round, "Baloo 2"), sans-serif; font-weight: 700; font-size: 26px; color: #fff;
+  background: linear-gradient(150deg, var(--pink-deep), var(--lavender-deep));
+  box-shadow: 0 6px 14px rgba(125, 106, 208, 0.30);
+  border: 2.5px solid rgba(255, 255, 255, 0.7);
+}
+.hello .greeting { display: inline-flex; align-items: center; gap: 5px; }
+.name-row { display: inline-flex; align-items: center; gap: 7px; }
+.name-heart { font-size: 18px; line-height: 1; animation: beat 1.6s ease-in-out infinite; transform-origin: center; }
+@keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.22); } 30% { transform: scale(1); } }
+
+.age-pill {
+  font-family: var(--font-mono); font-size: 12px; color: var(--lavender-deep);
+  background: rgba(255, 255, 255, 0.6); border: 1px solid var(--card-stroke);
+  padding: 3px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 6px;
+}
 .title-page { font-family: var(--font-display); font-weight: 600; font-size: 32px; margin-bottom: 16px; }
 .section-title { font-family: var(--font-display); font-weight: 600; font-size: 20px; margin: 22px 4px 10px; }
 .muted { color: var(--ink-2); }

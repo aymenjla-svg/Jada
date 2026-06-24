@@ -79,10 +79,19 @@ export function renderMaman(ctx) {
 
   return el("div", { class: "screen active" }, [
     el("div", { class: "screen-head" }, [
-      el("div", {}, [el("div", { class: "greeting" }, "Bonjour"), el("div", { class: "title-xl" }, child?.name || "Bébé")]),
+      el("div", { class: "hello" }, [
+        el("div", { class: "hello-av" }, (child?.name || "B").trim().charAt(0).toUpperCase()),
+        el("div", {}, [
+          el("div", { class: "greeting" }, greeting()),
+          el("div", { class: "name-row" }, [
+            el("div", { class: "title-xl" }, child?.name || "Bébé"),
+            el("span", { class: "name-heart" }, "💗"),
+          ]),
+        ]),
+      ]),
       el("div", { style: "text-align:right" }, [
-        el("div", { class: "pill" }, child ? ageDescription(child.birth_date) : ""),
-        caregiverBadge(ctx),
+        el("div", { class: "age-pill" }, child ? "👶 " + ageDescription(child.birth_date) : ""),
+        el("div", {}, caregiverBadge(ctx)),
       ]),
     ]),
     el("div", { class: "ring-wrap" }, ring),
@@ -117,6 +126,15 @@ function caregiverBadge(ctx) {
 
 const cgLabel = (id) => (id === "papa" ? "Papa" : "Maman");
 const byTimeDesc = (a, b) => new Date(b.timestamp) - new Date(a.timestamp);
+
+// Salutation douce selon l'heure (la lune pour les tétées de nuit).
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 5) return "Coucou 🌙";
+  if (h < 12) return "Bonjour ☀️";
+  if (h < 18) return "Coucou 🌸";
+  return "Bonsoir 🌙";
+}
 
 // ============================================================
 //  Feuilles de saisie
