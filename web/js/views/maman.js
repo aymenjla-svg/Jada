@@ -1,5 +1,6 @@
 import { el, ringSVG, openSheet, closeSheet, toast, field, segmented, caregiverToggle } from "../ui.js";
 import { uuid, fmtTime, fmtElapsed, relative, ageDescription, STOOL_COLORS } from "../data.js";
+import { openWelcomeSheet } from "../welcome.js";
 
 const REF_INTERVAL = 3 * 3600 * 1000; // 3 h de référence pour remplir l'anneau
 
@@ -89,9 +90,12 @@ export function renderMaman(ctx) {
           ]),
         ]),
       ]),
-      el("div", { style: "text-align:right" }, [
+      el("div", { style: "text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px" }, [
         el("div", { class: "age-pill" }, child ? "👶 " + ageDescription(child.birth_date) : ""),
-        el("div", {}, caregiverBadge(ctx)),
+        el("div", { style: "display:flex;align-items:center;gap:8px" }, [
+          el("button", { class: "sound-btn", title: "Son d'accueil", onclick: () => openWelcomeSheet() }, "🔔"),
+          caregiverBadge(ctx),
+        ]),
       ]),
     ]),
     el("div", { class: "ring-wrap" }, ring),

@@ -1,9 +1,62 @@
-// Petit carillon doux au lancement de l'app (esprit berceuse).
+// Son d'accueil au lancement de l'app.
+//  - Si un message vocal a été enregistré → on le joue.
+//  - Sinon → un doux carillon synthétisé (esprit berceuse).
 // iOS bloque l'audio sans geste : on joue donc au 1er contact après l'ouverture.
-// Désactivable via localStorage "jada:sound" = "off".
+// Désactivable via "jada:sound" = "off".
 
 let armed = false;
 
+// ---------- Stockage du message vocal (local à l'appareil) ----------
+export function getWelcomeAudio() { return localStorage.getItem("jada:welcomeAudio"); }
+export function setWelcomeAudio(dataUrl) { localStorage.setItem("jada:welcomeAudio", dataUrl); }
+export function clearWelcomeAudio() { localStorage.removeItem("jada:welcomeAudio"); }
+
+export function getWelcomeText() { return localStorage.getItem("jada:welcomeText") || ""; }
+export function setWelcomeText(t) { localStorage.setItem("jada:welcomeText", t); }
+export function clearWelcomeText() { localStorage.removeItem("jada:welcomeText"); }
+
+export function speak(text) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "fr-FR";
+    u.rate = 0.95;
+    u.pitch = 1.1;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+export function setSoundEnabled(on) { localStorage.setItem("jada:sound", on ? "on" : "off"); }
+export function isSoundEnabled() { return localStorage.getItem("jada:sound") !== "off"; }
+
+// ---------- Déclenchement ----------
+function onFirstGesture(fn) {
+  const evs = ["pointerdown", "touchend", "click", "keydown"];
+  const h = () => { evs.forEach((e) => removeEventListener(e, h, true)); fn(); };
+  evs.forEach((e) => addEventListener(e, h, { capture: true }));
+}
+
+function playDataUrl(url) {
+  try { const a = new Audio(url); a.play().catch(() => {}); } catch (e) {}
+}
+
+export function welcomeSound() {
+  if (armed) return;
+  armed = true;
+  if (!isSoundEnabled()) return;
+
+  const rec = getWelcomeAudio();
+  const txt = getWelcomeText();
+  if (rec) {
+    onFirstGesture(() => playDataUrl(rec));
+  } else if (txt) {
+    onFirstGesture(() => speak(txt));
+  } else {
+    chime();
+  }
+}
+
+// ---------- Carillon de secours (synthétisé) ----------
 function chime() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
@@ -14,9 +67,6 @@ function chime() {
     const master = ac.createGain();
     master.gain.value = 0.5;
     master.connect(ac.destination);
-
-    // Trois notes douces qui montent (do–mi–sol), avec une couche légèrement
-    // désaccordée pour la chaleur, et un long fondu type célesta.
     const notes = [523.25, 659.25, 783.99];
     notes.forEach((f, i) => {
       const t = now + i * 0.14;
@@ -37,30 +87,6 @@ function chime() {
     setTimeout(() => ac.close().catch(() => {}), 2800);
   };
 
-  if (ac.state === "running") {
-    play(); // Android / ordinateur : son immédiat à l'ouverture.
-  } else {
-    // iPhone : on attend le tout premier geste pour débloquer, puis on joue.
-    const onGesture = () => {
-      ac.resume().then(play).catch(() => {});
-      events.forEach((e) => removeEventListener(e, onGesture, true));
-    };
-    const events = ["pointerdown", "touchend", "click", "keydown"];
-    events.forEach((e) => addEventListener(e, onGesture, { capture: true }));
-  }
-}
-
-export function welcomeSound() {
-  if (armed) return;
-  armed = true;
-  if (localStorage.getItem("jada:sound") === "off") return;
-  try { chime(); } catch (e) {}
-}
-
-// Active / coupe le son (utilisable plus tard depuis un réglage).
-export function setSoundEnabled(on) {
-  localStorage.setItem("jada:sound", on ? "on" : "off");
-}
-export function isSoundEnabled() {
-  return localStorage.getItem("jada:sound") !== "off";
+  if (ac.state === "running") play();
+  else onFirstGesture(() => ac.resume().then(play).catch(() => {}));
 }
