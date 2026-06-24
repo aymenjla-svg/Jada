@@ -48,11 +48,12 @@ export function welcomeSound() {
   const rec = getWelcomeAudio();
   const txt = getWelcomeText();
   if (rec) {
-    onFirstGesture(() => playDataUrl(rec));
+    onFirstGesture(() => playDataUrl(rec));          // voix enregistrée (cet appareil)
   } else if (txt) {
-    onFirstGesture(() => speak(txt));
+    onFirstGesture(() => speak(txt));                // petit mot écrit (cet appareil)
   } else {
-    chime();
+    // Son d'accueil par défaut, partagé sur tous les appareils : « ya jada ».
+    onFirstGesture(() => playDataUrl("sounds/welcome.mp3"));
   }
 }
 
