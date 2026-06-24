@@ -19,16 +19,30 @@ function describe(e) {
     const col = p.stoolColor ? ` · ${p.stoolColor}` : "";
     return { ic: p.kind === "pipi" ? "💦" : "💩", tint: "lav", text: `Couche ${k.toLowerCase()}${col}` };
   }
+  if (e.type === "sleep") {
+    const dur = p.durationSec ? ` · ${fmtDur(p.durationSec)}` : "";
+    return { ic: "😴", tint: "plum", text: `Sommeil${dur}` };
+  }
   return { ic: "•", tint: "plum", text: e.type };
 }
 
+// Durée lisible : « 1h05 », « 18 min », « 45 s ».
+function fmtDur(sec) {
+  sec = Math.round(sec);
+  if (sec < 60) return `${sec} s`;
+  const m = Math.round(sec / 60);
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+}
+
 export function renderMaman(ctx) {
-  stopLiveTimer();
+  stopLiveTimers();
   const { cache } = ctx;
   const child = cache.child;
   const feeds = cache.events.filter((e) => e.type === "feeding").sort(byTimeDesc);
   const ongoingFeed = feeds.find((e) => e.payload && e.payload.ongoing);
   const completedFeeds = feeds.filter((e) => !(e.payload && e.payload.ongoing));
+  const ongoingSleep = cache.events.find((e) => e.type === "sleep" && e.payload && e.payload.ongoing);
   const all = [...cache.events].sort(byTimeDesc);
   const lastFeed = completedFeeds[0];
 
@@ -63,6 +77,25 @@ export function renderMaman(ctx) {
     ? ongoingFeedCard(ctx, ongoingFeed)
     : el("button", { class: "btn-feed", onclick: () => startFeed(ctx, completedFeeds) }, "▶︎ Commencer la tétée");
 
+  // Sommeil minuté : « Endormie » / carte « en cours ».
+  const sleepControl = ongoingSleep
+    ? ongoingSleepCard(ctx, ongoingSleep)
+    : el("button", { class: "btn-feed sleep", onclick: () => startSleep(ctx) }, "🌙 Endormie (démarrer le sommeil)");
+
+  // Rappel visuel doux si la dernière tétée date un peu.
+  const reminder = (lastFeed && elapsed > REF_INTERVAL && !ongoingFeed)
+    ? el("div", { class: "reminder" }, `💡 ${fmtElapsed(elapsed)} depuis la dernière tétée`)
+    : null;
+
+  // Résumé du jour
+  const s = daySummary(cache.events);
+  const summaryCard = el("div", { class: "card summary" }, [
+    statCell("🤱", String(s.feeds), "tétées"),
+    statCell("🍼", s.ml ? `${s.ml}` : "—", "ml bib."),
+    statCell("💩", String(s.diapers), "couches"),
+    statCell("😴", s.sleepSec ? fmtDur(s.sleepSec) : "—", "sommeil"),
+  ]);
+
   // Grille d'actions
   const actions = el("div", { class: "card" }, [
     el("div", { class: "actions" }, [
@@ -81,13 +114,13 @@ export function renderMaman(ctx) {
   if (!today.length) list.appendChild(el("div", { class: "empty" }, "Rien aujourd'hui."));
   else today.forEach((e) => {
     const d = describe(e);
-    const editable = e.type === "feeding";
-    const row = el("div", { class: "event" + (editable ? " tappable" : "") }, [
+    const editor = EDITORS[e.type];
+    const row = el("div", { class: "event" + (editor ? " tappable" : "") }, [
       el("div", { class: "mini " + d.tint }, d.ic),
       el("div", { style: "flex:1;min-width:0" }, [el("div", { class: "t" }, d.text), el("div", { class: "by" }, "par " + cgLabel(e.created_by))]),
       el("div", { class: "time" }, fmtTime(e.timestamp)),
     ]);
-    if (editable) row.onclick = () => editFeedSheet(ctx, e);
+    if (editor) row.onclick = () => editor(ctx, e);
     list.appendChild(row);
   });
 
@@ -112,8 +145,11 @@ export function renderMaman(ctx) {
       ]),
     ]),
     el("div", { class: "ring-wrap" }, ring),
+    reminder,
+    summaryCard,
     lastCard,
     feedControl,
+    sleepControl,
     actions,
     el("div", { class: "section-title" }, "Aujourd'hui"),
     list,
@@ -158,13 +194,12 @@ function greeting() {
 //  Tétée minutée (chrono en direct) + édition
 // ============================================================
 
-let liveInterval = null;
-function stopLiveTimer() { if (liveInterval) { clearInterval(liveInterval); liveInterval = null; } }
-function startLiveTimer(node, startISO) {
-  stopLiveTimer();
+let liveIntervals = [];
+function stopLiveTimers() { liveIntervals.forEach(clearInterval); liveIntervals = []; }
+function addLiveTimer(node, startISO) {
   const upd = () => { node.textContent = fmtClock(Date.now() - new Date(startISO)); };
   upd();
-  liveInterval = setInterval(upd, 1000);
+  liveIntervals.push(setInterval(upd, 1000));
 }
 function fmtClock(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -191,10 +226,9 @@ function ongoingFeedCard(ctx, ev) {
     async (v) => { await ctx.store.update("events", ev.id, { payload: { ...p, side: v } }); }
   );
   const timer = el("div", { class: "feed-timer" }, "00:00");
-  startLiveTimer(timer, ev.timestamp);
+  addLiveTimer(timer, ev.timestamp);
 
   const stopBtn = el("button", { class: "btn-feed stop", onclick: async () => {
-    stopLiveTimer();
     const sec = Math.max(1, Math.round((Date.now() - new Date(ev.timestamp)) / 1000));
     await ctx.store.update("events", ev.id, { payload: { kind: "sein", side: sideSeg.get(), durationSec: sec } });
     toast("Tétée enregistrée ✓");
@@ -250,6 +284,110 @@ function editFeedSheet(ctx, ev) {
     await ctx.store.update("events", ev.id, { payload, timestamp: fromLocal(when.value) });
     closeSheet(); toast("Tétée modifiée");
   }});
+}
+
+// ---------- Sommeil minuté ----------
+async function startSleep(ctx) {
+  await ctx.store.insert("events", {
+    id: uuid(), type: "sleep", timestamp: new Date().toISOString(),
+    created_by: ctx.caregiver, note: null, payload: { ongoing: true },
+  });
+  toast("Sommeil démarré 😴");
+}
+
+function ongoingSleepCard(ctx, ev) {
+  const timer = el("div", { class: "feed-timer" }, "00:00");
+  addLiveTimer(timer, ev.timestamp);
+  const stopBtn = el("button", { class: "btn-feed stop", onclick: async () => {
+    const sec = Math.max(1, Math.round((Date.now() - new Date(ev.timestamp)) / 1000));
+    await ctx.store.update("events", ev.id, { payload: { durationSec: sec } });
+    toast("Sommeil enregistré ✓");
+  } }, "☀️ Réveillée (fin du sommeil)");
+  return el("div", { class: "card feed-live sleep" }, [
+    el("div", { class: "feed-live-head" }, [
+      el("span", {}, "😴 Sommeil en cours"),
+      el("span", { class: "pill" }, "par " + cgLabel(ev.created_by)),
+    ]),
+    el("div", { class: "feed-timer-wrap" }, timer),
+    stopBtn,
+    el("button", { class: "btn-link", style: "display:block;margin:8px auto 0", onclick: () => adjustStart(ctx, ev) },
+      "Modifier l'heure de début"),
+  ]);
+}
+
+// ---------- Édition couche / hydratation / sommeil ----------
+function delButton(ctx, ev, msg) {
+  return el("button", { class: "sheet-secondary", style: "color:#c0392b;margin-top:8px",
+    onclick: async () => { if (confirm(msg)) { await ctx.store.remove("events", ev.id); closeSheet(); toast("Supprimé"); } } },
+    "🗑 Supprimer");
+}
+
+function editHydrationSheet(ctx, ev) {
+  const p = ev.payload || {};
+  const product = el("input", { type: "text", value: p.product || "Adiaryl" });
+  const vol = el("input", { type: "number", inputmode: "numeric", value: p.volumeMl || "" });
+  const when = el("input", { type: "datetime-local", value: toLocal(ev.timestamp) });
+  openSheet("Modifier l'hydratation",
+    el("div", {}, [field("Produit", product), field("Volume (ml)", vol), field("Quand ?", when), delButton(ctx, ev, "Supprimer cette hydratation ?")]),
+    { onSave: async () => {
+      await ctx.store.update("events", ev.id, { payload: { product: product.value || "Adiaryl", volumeMl: Number(vol.value) || 0 }, timestamp: fromLocal(when.value) });
+      closeSheet(); toast("Modifié");
+    } });
+}
+
+function editDiaperSheet(ctx, ev) {
+  const p = ev.payload || {};
+  let kind = p.kind || "pipi";
+  const seg = segmented([{ id: "pipi", label: "Pipi" }, { id: "caca", label: "Caca" }, { id: "mixte", label: "Mixte" }], kind,
+    (v) => { kind = v; colorBox.style.display = v === "pipi" ? "none" : ""; });
+  let color = p.stoolColor || "jaune";
+  const swatches = STOOL_COLORS.map((c) => {
+    const sw = el("div", { class: "swatch" + (c.id === color ? " on" : "") }, [el("div", { class: "dot", style: `background:${c.hex}` }), el("span", {}, c.label)]);
+    sw.onclick = () => { color = c.id; [...colors.children].forEach((n, i) => n.className = "swatch" + (STOOL_COLORS[i].id === color ? " on" : "")); };
+    return sw;
+  });
+  const colors = el("div", { class: "colors" }, swatches);
+  const colorBox = field("Couleur des selles", colors);
+  colorBox.style.display = kind === "pipi" ? "none" : "";
+  const when = el("input", { type: "datetime-local", value: toLocal(ev.timestamp) });
+  openSheet("Modifier la couche",
+    el("div", {}, [field("Type", seg.node), colorBox, field("Quand ?", when), delButton(ctx, ev, "Supprimer cette couche ?")]),
+    { onSave: async () => {
+      await ctx.store.update("events", ev.id, { payload: { kind, stoolColor: kind === "pipi" ? null : color }, timestamp: fromLocal(when.value) });
+      closeSheet(); toast("Modifié");
+    } });
+}
+
+function editSleepSheet(ctx, ev) {
+  const p = ev.payload || {};
+  const minutes = p.durationSec ? Math.round(p.durationSec / 60) : 0;
+  const dur = el("input", { type: "number", inputmode: "numeric", value: minutes });
+  const when = el("input", { type: "datetime-local", value: toLocal(ev.timestamp) });
+  openSheet("Modifier le sommeil",
+    el("div", {}, [field("Durée (min)", dur), field("Début", when), delButton(ctx, ev, "Supprimer ce sommeil ?")]),
+    { onSave: async () => {
+      await ctx.store.update("events", ev.id, { payload: { durationSec: (Number(dur.value) || 0) * 60 }, timestamp: fromLocal(when.value) });
+      closeSheet(); toast("Sommeil modifié");
+    } });
+}
+
+const EDITORS = { feeding: editFeedSheet, hydration: editHydrationSheet, diaper: editDiaperSheet, sleep: editSleepSheet };
+
+// ---------- Résumé du jour ----------
+function daySummary(events) {
+  const today = events.filter((e) => new Date(e.timestamp).toDateString() === new Date().toDateString());
+  const feeds = today.filter((e) => e.type === "feeding" && !(e.payload && e.payload.ongoing));
+  const ml = feeds.reduce((sum, f) => sum + (f.payload?.volumeMl || 0), 0);
+  const diapers = today.filter((e) => e.type === "diaper").length;
+  const sleepSec = today.filter((e) => e.type === "sleep").reduce((sum, e) => sum + (e.payload?.durationSec || 0), 0);
+  return { feeds: feeds.length, ml, diapers, sleepSec };
+}
+function statCell(ic, val, label) {
+  return el("div", { class: "stat" }, [
+    el("div", { class: "stat-ic" }, ic),
+    el("div", { class: "stat-val" }, val),
+    el("div", { class: "stat-lab" }, label),
+  ]);
 }
 
 // ============================================================

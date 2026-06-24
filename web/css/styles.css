@@ -165,6 +165,20 @@ body {
 .event.tappable { cursor: pointer; }
 .event.tappable:active { background: rgba(232,160,214,.12); border-radius: 12px; }
 
+.btn-feed.sleep { background: linear-gradient(135deg, var(--lavender), var(--lavender-deep)); box-shadow: 0 6px 16px rgba(125,106,208,.3); margin-top: 8px; font-size: 16px; }
+.feed-live.sleep { border-color: rgba(169,138,214,.5); }
+.feed-live.sleep .feed-timer { color: var(--plum-light); }
+
+/* Résumé du jour */
+.summary { display: flex; justify-content: space-around; padding: 14px 6px; }
+.stat { text-align: center; flex: 1; }
+.stat-ic { font-size: 20px; }
+.stat-val { font-family: var(--font-round); font-weight: 700; font-size: 19px; color: var(--ink); margin-top: 2px; }
+.stat-lab { font-family: var(--font-mono); font-size: 10px; color: var(--ink-2); text-transform: uppercase; }
+
+/* Rappel doux */
+.reminder { text-align: center; font-size: 13px; color: var(--lavender-deep); background: rgba(169,138,214,.12); border-radius: 999px; padding: 7px 14px; margin: 0 auto 14px; max-width: max-content; }
+
 /* ---------- Boutons ---------- */
 
 .btn-primary {
