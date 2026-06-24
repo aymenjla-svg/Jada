@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+
+# Xcode workspace / user
+*.xcworkspace/xcuserdata/
+JADA.xcodeproj/project.xcworkspace/xcuserdata/
+JADA.xcodeproj/xcuserdata/
+
+# Swift Package Manager
+.swiftpm/
+.build/
+
+# Provisioning / secrets
+*.mobileprovision
+JADA/JADA.entitlements
+
+# Misc
+*.log
