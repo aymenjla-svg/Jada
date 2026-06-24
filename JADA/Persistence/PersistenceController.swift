@@ -46,6 +46,14 @@ enum PersistenceController {
         do {
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
+            // Si CloudKit est activé mais mal configuré (entitlement / conteneur
+            // manquant), on retombe en local plutôt que de planter au lancement.
+            if cloudKitEnabled && !inMemory {
+                let local = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+                if let container = try? ModelContainer(for: schema, configurations: [local]) {
+                    return container
+                }
+            }
             fatalError("Impossible de créer le ModelContainer : \(error)")
         }
     }
