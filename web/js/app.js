@@ -4,6 +4,7 @@ import { buildVaccines, uuid } from "./data.js";
 import { el, clear, toast } from "./ui.js";
 import { renderMaman } from "./views/maman.js";
 import { renderSante } from "./views/sante.js";
+import { renderAlbum } from "./views/album.js";
 import { welcomeSound } from "./sound.js";
 
 const root = () => document.getElementById("root");
@@ -12,7 +13,7 @@ const ctx = {
   store: null,
   caregiver: localStorage.getItem("jada:caregiver") || "maman",
   tab: "maman",
-  cache: { child: null, events: [], measurements: [], vaccines: [], appointments: [], medical_entries: [] },
+  cache: { child: null, events: [], measurements: [], vaccines: [], appointments: [], medical_entries: [], daily_photos: [] },
   setCaregiver(v) { ctx.caregiver = v; localStorage.setItem("jada:caregiver", v); render(); },
 };
 
@@ -35,11 +36,12 @@ async function boot() {
 
 async function refresh() {
   const s = ctx.store;
-  const [child, events, measurements, vaccines, appointments, medical_entries] = await Promise.all([
+  const [child, events, measurements, vaccines, appointments, medical_entries, daily_photos] = await Promise.all([
     s.getChild(), s.list("events"), s.list("measurements"),
     s.list("vaccines"), s.list("appointments"), s.list("medical_entries"),
+    s.list("daily_photos").catch(() => []),
   ]);
-  ctx.cache = { child, events, measurements, vaccines, appointments, medical_entries };
+  ctx.cache = { child, events, measurements, vaccines, appointments, medical_entries, daily_photos };
   render();
 }
 
@@ -52,7 +54,10 @@ function render() {
 
   if (!ctx.cache.child) { r.appendChild(onboarding()); return; }
 
-  r.appendChild(ctx.tab === "maman" ? renderMaman(ctx) : renderSante(ctx));
+  const view = ctx.tab === "maman" ? renderMaman(ctx)
+    : ctx.tab === "sante" ? renderSante(ctx)
+    : renderAlbum(ctx);
+  r.appendChild(view);
   r.appendChild(tabbar());
 }
 
@@ -66,6 +71,7 @@ function tabbar() {
   return el("div", { class: "tabbar" }, [
     make("maman", "🤱", "Maman"),
     make("sante", "🩺", "Santé"),
+    make("album", "📸", "Album"),
   ]);
 }
 

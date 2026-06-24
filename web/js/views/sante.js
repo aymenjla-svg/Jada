@@ -149,9 +149,19 @@ function chartSVG(pts, unit) {
   const line = pts.map((p, i) => `${i ? "L" : "M"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(" ");
   const area = `${line} L${sx(maxX).toFixed(1)},${H - pad} L${sx(minX).toFixed(1)},${H - pad} Z`;
   const dots = pts.map((p) => `<circle class="pt" cx="${sx(p.x).toFixed(1)}" cy="${sy(p.y).toFixed(1)}" r="4"/>`).join("");
+
+  // Dates sous l'axe des abscisses (premier, derniers, intermédiaires).
+  const n = pts.length;
+  const idxs = n <= 1 ? [0] : n <= 4 ? pts.map((_, i) => i)
+    : [0, Math.round((n - 1) / 3), Math.round((n - 1) * 2 / 3), n - 1];
+  const xlabels = [...new Set(idxs)].map((i) => {
+    const anchor = i === 0 ? "start" : i === n - 1 ? "end" : "middle";
+    return `<text x="${sx(pts[i].x).toFixed(1)}" y="${H - 8}" font-size="11" fill="#9A7A92" text-anchor="${anchor}">${fmtDay(pts[i].x)}</text>`;
+  }).join("");
+
   const wrap = el("div", { class: "chart" });
   wrap.innerHTML = `
-  <svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="none">
+  <svg viewBox="0 0 ${W} ${H}" class="chart" preserveAspectRatio="xMidYMid meet">
     <defs><linearGradient id="areagrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#A98AD6" stop-opacity="0.28"/>
       <stop offset="100%" stop-color="#A98AD6" stop-opacity="0"/></linearGradient></defs>
@@ -159,7 +169,8 @@ function chartSVG(pts, unit) {
     <path class="area" d="${area}"/>
     <path class="line" d="${line}"/>
     ${dots}
-    <text x="${pad}" y="16" font-family="var(--font-mono)" font-size="12" fill="#9A7A92">${unit}</text>
+    <text x="${pad}" y="16" font-size="12" fill="#9A7A92">${unit}</text>
+    ${xlabels}
   </svg>`;
   return wrap;
 }

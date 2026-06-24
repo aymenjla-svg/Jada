@@ -6,7 +6,11 @@
 
 import { CONFIG, SYNC_ENABLED } from "./config.js";
 
-const COLLECTIONS = ["events", "measurements", "vaccines", "appointments", "medical_entries"];
+const COLLECTIONS = ["events", "measurements", "vaccines", "appointments", "medical_entries", "daily_photos"];
+
+function blobToDataURL(blob) {
+  return new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+}
 
 // ----------------------------------------------------------------
 //  Émetteur de changements (déclenche un re-render)
@@ -40,6 +44,15 @@ class LocalStore extends Emitter {
     if (i >= 0) { a[i] = { ...a[i], ...patch }; this._write(c, a); }
   }
   async remove(c, id) { this._write(c, this._read(c).filter((x) => x.id !== id)); }
+
+  // Images (mode local : base64 dans le navigateur)
+  async uploadImage(blob) {
+    const ref = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+    localStorage.setItem("jada:img:" + ref, await blobToDataURL(blob));
+    return ref;
+  }
+  async imageURL(ref) { return localStorage.getItem("jada:img:" + ref) || null; }
+  async deleteImage(ref) { localStorage.removeItem("jada:img:" + ref); }
 }
 
 // ----------------------------------------------------------------
@@ -72,6 +85,20 @@ class SupabaseStore extends Emitter {
   async insertMany(c, objs) { if (objs.length) await this.sb.from(c).insert(objs); }
   async update(c, id, patch) { await this.sb.from(c).update(patch).eq("id", id); }
   async remove(c, id) { await this.sb.from(c).delete().eq("id", id); }
+
+  // Images (mode synchro : stockage Supabase privé + URL signée)
+  async uploadImage(blob) {
+    const ref = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + ".jpg";
+    const { error } = await this.sb.storage.from("photos").upload(ref, blob, { contentType: "image/jpeg" });
+    if (error) throw error;
+    return ref;
+  }
+  async imageURL(ref) {
+    if (!ref) return null;
+    const { data } = await this.sb.storage.from("photos").createSignedUrl(ref, 3600);
+    return data?.signedUrl || null;
+  }
+  async deleteImage(ref) { if (ref) await this.sb.storage.from("photos").remove([ref]); }
 }
 
 // ----------------------------------------------------------------
