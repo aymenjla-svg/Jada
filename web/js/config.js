@@ -11,9 +11,9 @@
 
 export const CONFIG = {
   // Exemple : "https://abcdefgh.supabase.co"
-  SUPABASE_URL: "",
+  SUPABASE_URL: "https://gvslafakpulnieyvthyh.supabase.co",
   // La clé "anon public" (commence par "eyJ...")
-  SUPABASE_ANON_KEY: "",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2c2xhZmFrcHVsbmlleXZ0aHloIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMTM2OTIsImV4cCI6MjA5Nzg4OTY5Mn0.G-xW8o2k-pCLVEdY4P5EV6FhDqryaF0UHWFZPmOgFA8",
 };
 
 export const SYNC_ENABLED = Boolean(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
