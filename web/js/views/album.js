@@ -27,7 +27,7 @@ export function renderAlbum(ctx) {
   }
 
   const addBtn = el("button", { class: "btn-primary", style: "margin-top:12px", onclick: () => fileInput.click() },
-    "📸 Ajouter la photo du jour");
+    "📸 Ajouter une photo");
 
   // Calendrier-vignettes (une par jour)
   const grid = el("div", { class: "album-grid" });
@@ -65,6 +65,7 @@ function photoImg(ctx, p, cls) {
 }
 
 function openPhoto(ctx, p) {
+  const date = el("input", { type: "date", value: (p.day || "").slice(0, 10) });
   const cap = el("input", { type: "text", placeholder: "Légende…", value: p.caption || "" });
   const del = el("button", { class: "sheet-secondary", style: "color:#c0392b;margin-top:8px",
     onclick: async () => {
@@ -74,25 +75,37 @@ function openPhoto(ctx, p) {
         closeSheet(); toast("Photo supprimée");
       }
     } }, "🗑 Supprimer");
-  openSheet(fmtFull(p.day), el("div", {}, [photoImg(ctx, p, "album-hero"), field("Légende", cap), del]), {
-    onSave: async () => { await ctx.store.update("daily_photos", p.id, { caption: cap.value || null }); closeSheet(); toast("Enregistré"); },
+  openSheet(fmtFull(p.day), el("div", {}, [photoImg(ctx, p, "album-hero"), field("Jour", date), field("Légende", cap), del]), {
+    onSave: async () => {
+      await ctx.store.update("daily_photos", p.id, { caption: cap.value || null, day: date.value || p.day });
+      closeSheet(); toast("Enregistré");
+    },
   });
 }
 
 async function handleFile(ctx, file) {
   if (!file) return;
-  toast("Ajout de la photo…");
-  try {
-    const blob = await compress(file, 1280, 0.72);
-    const row = { id: uuid(), day: todayISO(), caption: null, featured: true, created_by: ctx.caregiver, path: null, data: null };
-    if (ctx.store.mode === "cloud") row.path = await ctx.store.uploadImage(blob);
-    else row.data = await blobToDataURL(blob);
-    await ctx.store.insert("daily_photos", row);
-    toast("Photo ajoutée ✨");
-  } catch (e) {
-    console.error(e);
-    toast("Échec de l'ajout (réessaie)");
-  }
+  let blob;
+  try { blob = await compress(file, 1280, 0.72); }
+  catch (e) { toast("Image illisible"); return; }
+
+  const url = URL.createObjectURL(blob);
+  const date = el("input", { type: "date", value: todayISO() });
+  const cap = el("input", { type: "text", placeholder: "Légende (optionnel)" });
+  openSheet("Ajouter une photo",
+    el("div", {}, [el("img", { class: "album-hero", src: url }), field("Jour", date), field("Légende", cap)]),
+    { saveLabel: "Ajouter", onSave: async () => {
+      closeSheet();
+      toast("Ajout de la photo…");
+      try {
+        const row = { id: uuid(), day: date.value || todayISO(), caption: cap.value || null, featured: true, created_by: ctx.caregiver, path: null, data: null };
+        if (ctx.store.mode === "cloud") row.path = await ctx.store.uploadImage(blob);
+        else row.data = await blobToDataURL(blob);
+        await ctx.store.insert("daily_photos", row);
+        toast("Photo ajoutée ✨");
+      } catch (e) { console.error(e); toast("Échec de l'ajout (réessaie)"); }
+      finally { URL.revokeObjectURL(url); }
+    } });
 }
 
 // Redimensionne/compresse l'image avant envoi (plus léger, plus rapide).
