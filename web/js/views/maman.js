@@ -23,11 +23,14 @@ function describe(e) {
 }
 
 export function renderMaman(ctx) {
+  stopLiveTimer();
   const { cache } = ctx;
   const child = cache.child;
   const feeds = cache.events.filter((e) => e.type === "feeding").sort(byTimeDesc);
+  const ongoingFeed = feeds.find((e) => e.payload && e.payload.ongoing);
+  const completedFeeds = feeds.filter((e) => !(e.payload && e.payload.ongoing));
   const all = [...cache.events].sort(byTimeDesc);
-  const lastFeed = feeds[0];
+  const lastFeed = completedFeeds[0];
 
   // Anneau
   const elapsed = lastFeed ? Date.now() - new Date(lastFeed.timestamp) : 0;
@@ -55,6 +58,11 @@ export function renderMaman(ctx) {
     lastCard.appendChild(el("div", { class: "empty" }, "Aucun événement encore. Loggez la première tétée 👇"));
   }
 
+  // Tétée minutée : bouton « Commencer » ou carte « en cours ».
+  const feedControl = ongoingFeed
+    ? ongoingFeedCard(ctx, ongoingFeed)
+    : el("button", { class: "btn-feed", onclick: () => startFeed(ctx, completedFeeds) }, "▶︎ Commencer la tétée");
+
   // Grille d'actions
   const actions = el("div", { class: "card" }, [
     el("div", { class: "actions" }, [
@@ -65,17 +73,22 @@ export function renderMaman(ctx) {
     ]),
   ]);
 
-  // Fil du jour
+  // Fil du jour (on masque la tétée en cours, montrée dans sa carte dédiée)
   const list = el("div", { class: "card tight" });
-  const today = all.filter(sameDay).slice(0, 30);
+  const today = all.filter(sameDay)
+    .filter((e) => !(e.type === "feeding" && e.payload && e.payload.ongoing))
+    .slice(0, 30);
   if (!today.length) list.appendChild(el("div", { class: "empty" }, "Rien aujourd'hui."));
   else today.forEach((e) => {
     const d = describe(e);
-    list.appendChild(el("div", { class: "event" }, [
+    const editable = e.type === "feeding";
+    const row = el("div", { class: "event" + (editable ? " tappable" : "") }, [
       el("div", { class: "mini " + d.tint }, d.ic),
-      el("div", {}, [el("div", { class: "t" }, d.text), el("div", { class: "by" }, "par " + cgLabel(e.created_by))]),
+      el("div", { style: "flex:1;min-width:0" }, [el("div", { class: "t" }, d.text), el("div", { class: "by" }, "par " + cgLabel(e.created_by))]),
       el("div", { class: "time" }, fmtTime(e.timestamp)),
-    ]));
+    ]);
+    if (editable) row.onclick = () => editFeedSheet(ctx, e);
+    list.appendChild(row);
   });
 
   return el("div", { class: "screen active" }, [
@@ -100,6 +113,7 @@ export function renderMaman(ctx) {
     ]),
     el("div", { class: "ring-wrap" }, ring),
     lastCard,
+    feedControl,
     actions,
     el("div", { class: "section-title" }, "Aujourd'hui"),
     list,
@@ -138,6 +152,104 @@ function greeting() {
   if (h < 12) return "Bonjour ☀️";
   if (h < 18) return "Coucou 🌸";
   return "Bonsoir 🌙";
+}
+
+// ============================================================
+//  Tétée minutée (chrono en direct) + édition
+// ============================================================
+
+let liveInterval = null;
+function stopLiveTimer() { if (liveInterval) { clearInterval(liveInterval); liveInterval = null; } }
+function startLiveTimer(node, startISO) {
+  stopLiveTimer();
+  const upd = () => { node.textContent = fmtClock(Date.now() - new Date(startISO)); };
+  upd();
+  liveInterval = setInterval(upd, 1000);
+}
+function fmtClock(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+async function startFeed(ctx, completedFeeds) {
+  // Alterne automatiquement le côté par rapport à la dernière tétée au sein.
+  const lastSide = completedFeeds.find((f) => f.payload && f.payload.side)?.payload?.side;
+  const side = lastSide === "gauche" ? "droite" : "gauche";
+  await ctx.store.insert("events", {
+    id: uuid(), type: "feeding", timestamp: new Date().toISOString(),
+    created_by: ctx.caregiver, note: null,
+    payload: { kind: "sein", side, ongoing: true },
+  });
+  toast("Tétée démarrée ⏱️");
+}
+
+function ongoingFeedCard(ctx, ev) {
+  const p = ev.payload || {};
+  const sideSeg = segmented(
+    [{ id: "gauche", label: "Gauche" }, { id: "droite", label: "Droite" }],
+    p.side || "gauche",
+    async (v) => { await ctx.store.update("events", ev.id, { payload: { ...p, side: v } }); }
+  );
+  const timer = el("div", { class: "feed-timer" }, "00:00");
+  startLiveTimer(timer, ev.timestamp);
+
+  const stopBtn = el("button", { class: "btn-feed stop", onclick: async () => {
+    stopLiveTimer();
+    const sec = Math.max(1, Math.round((Date.now() - new Date(ev.timestamp)) / 1000));
+    await ctx.store.update("events", ev.id, { payload: { kind: "sein", side: sideSeg.get(), durationSec: sec } });
+    toast("Tétée enregistrée ✓");
+  } }, "■ Arrêter la tétée");
+
+  return el("div", { class: "card feed-live" }, [
+    el("div", { class: "feed-live-head" }, [
+      el("span", {}, "🤱 Tétée en cours"),
+      el("span", { class: "pill" }, "par " + cgLabel(ev.created_by)),
+    ]),
+    el("div", { class: "feed-timer-wrap" }, timer),
+    field("Côté", sideSeg.node),
+    stopBtn,
+    el("button", { class: "btn-link", style: "display:block;margin:8px auto 0", onclick: () => adjustStart(ctx, ev) },
+      "Modifier l'heure de début"),
+  ]);
+}
+
+function adjustStart(ctx, ev) {
+  const when = el("input", { type: "datetime-local", value: toLocal(ev.timestamp) });
+  openSheet("Heure de début", el("div", {}, [field("Début de la tétée", when)]), {
+    saveLabel: "OK",
+    onSave: async () => { await ctx.store.update("events", ev.id, { timestamp: fromLocal(when.value) }); closeSheet(); },
+  });
+}
+
+function editFeedSheet(ctx, ev) {
+  const p = ev.payload || {};
+  const isBib = p.kind === "biberon";
+  const side = segmented([{ id: "gauche", label: "Gauche" }, { id: "droite", label: "Droite" }], p.side || "gauche");
+  const minutes = p.durationSec ? Math.round(p.durationSec / 60) : 0;
+  const minLabel = el("label", {}, `Durée : ${minutes} min`);
+  const range = el("input", { type: "range", min: 0, max: 60, value: minutes,
+    oninput: () => (minLabel.textContent = `Durée : ${range.value} min`) });
+  const vol = el("input", { type: "number", inputmode: "numeric", value: p.volumeMl || "" });
+  const when = el("input", { type: "datetime-local", value: toLocal(ev.timestamp) });
+
+  const del = el("button", { class: "sheet-secondary", style: "color:#c0392b;margin-top:8px",
+    onclick: async () => { if (confirm("Supprimer cette tétée ?")) { await ctx.store.remove("events", ev.id); closeSheet(); toast("Supprimée"); } } },
+    "🗑 Supprimer");
+
+  const content = el("div", {}, [
+    isBib ? field("Volume (ml)", vol)
+          : el("div", {}, [field("Côté", side.node), el("div", { class: "field" }, [minLabel, range])]),
+    field("Quand ?", when),
+    del,
+  ]);
+
+  openSheet(isBib ? "Modifier le biberon" : "Modifier la tétée", content, { onSave: async () => {
+    const payload = isBib
+      ? { kind: "biberon", volumeMl: Number(vol.value) || null }
+      : { kind: "sein", side: side.get(), durationSec: Number(range.value) * 60 };
+    await ctx.store.update("events", ev.id, { payload, timestamp: fromLocal(when.value) });
+    closeSheet(); toast("Tétée modifiée");
+  }});
 }
 
 // ============================================================
@@ -221,3 +333,7 @@ function nowLocal() {
   return d.toISOString().slice(0, 16);
 }
 function fromLocal(v) { return v ? new Date(v).toISOString() : new Date().toISOString(); }
+function toLocal(iso) {
+  const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}

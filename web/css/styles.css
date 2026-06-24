@@ -146,6 +146,25 @@ body {
 .event .by { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); text-transform: uppercase; }
 .event .time { margin-left: auto; font-family: var(--font-mono); font-size: 14px; color: var(--ink-2); }
 
+/* ---------- Tétée minutée ---------- */
+.btn-feed {
+  width: 100%; border: none; cursor: pointer; color: #fff;
+  font-family: var(--font-body); font-weight: 600; font-size: 17px;
+  padding: 16px; border-radius: 18px; margin-top: 4px;
+  background: linear-gradient(135deg, var(--pink-deep), var(--lavender));
+  box-shadow: 0 6px 16px rgba(232,160,214,.35);
+}
+.btn-feed:active { transform: translateY(1px); }
+.btn-feed.stop { background: linear-gradient(135deg, var(--plum), var(--plum-light)); margin-top: 8px; }
+
+.feed-live { border: 1px solid rgba(232,160,214,.5); }
+.feed-live-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-round); font-weight: 600; color: var(--ink); }
+.feed-timer-wrap { text-align: center; margin: 6px 0 10px; }
+.feed-timer { font-family: var(--font-mono); font-weight: 500; font-size: 46px; color: var(--lavender-deep); letter-spacing: 1px; }
+
+.event.tappable { cursor: pointer; }
+.event.tappable:active { background: rgba(232,160,214,.12); border-radius: 12px; }
+
 /* ---------- Boutons ---------- */
 
 .btn-primary {
@@ -232,6 +251,9 @@ input[type=range] { width: 100%; accent-color: var(--pink-deep); }
 .appt-sub { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .appt-del { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; border: none; background: rgba(255,255,255,.5); color: var(--ink-2); font-size: 14px; cursor: pointer; }
 .appt-del:active { background: rgba(232,160,214,.25); }
+.appt-chevron { flex: 0 0 auto; color: var(--ink-2); font-size: 22px; padding: 0 4px; }
+.appt.tappable { cursor: pointer; }
+.appt.tappable:active { background: rgba(232,160,214,.12); border-radius: 12px; }
 
 .echeance { display: flex; align-items: center; gap: 14px; }
 .echeance + .echeance { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.55); }

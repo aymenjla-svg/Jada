@@ -98,21 +98,19 @@ function apptsCard(ctx, appts) {
   const sorted = [...appts].sort((a, b) => new Date(a.date) - new Date(b.date));
   const upcoming = sorted.filter((a) => new Date(a.date).getTime() >= now);
   const past = sorted.filter((a) => new Date(a.date).getTime() < now).reverse();
-  [...upcoming, ...past].forEach((a, i, arr) => {
+  [...upcoming, ...past].forEach((a) => {
     const isPast = new Date(a.date).getTime() < now;
     const sub = [fmtFull(a.date), a.practitioner, a.location].filter(Boolean).join(" · ");
-    const del = el("button", { class: "appt-del", title: "Supprimer",
-      onclick: async () => {
-        if (confirm(`Supprimer le rendez-vous « ${a.title} » ?`)) await ctx.store.remove("appointments", a.id);
-      } }, "✕");
-    card.appendChild(el("div", { class: "appt" + (isPast ? " past" : "") }, [
+    const row = el("div", { class: "appt tappable" + (isPast ? " past" : "") }, [
       el("div", { class: "avatar pink" }, "🩺"),
       el("div", { style: "flex:1;min-width:0" }, [
         el("div", { style: "font-weight:500" }, a.title),
         el("div", { class: "appt-sub" }, sub),
       ]),
-      del,
-    ]));
+      el("div", { class: "appt-chevron" }, "›"),
+    ]);
+    row.onclick = () => sheetAppointment(ctx, a);
+    card.appendChild(row);
   });
   return card;
 }
@@ -177,18 +175,47 @@ function nowLocal(offsetDays = 0) {
 }
 const dateLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
-function sheetAppointment(ctx) {
-  const title = el("input", { type: "text", placeholder: "Visite des 4 mois" });
-  const prac = el("input", { type: "text", placeholder: "Dr Martin" });
-  const loc = el("input", { type: "text", placeholder: "Cabinet" });
-  const date = el("input", { type: "datetime-local", value: nowLocal(1) });
-  const content = el("div", {}, [field("Titre", title), field("Praticien", prac), field("Lieu", loc), field("Date", date)]);
-  openSheet("Nouveau RDV", content, { onSave: async () => {
+// Création (existing=null) OU détails + modification d'un rendez-vous.
+function sheetAppointment(ctx, existing = null) {
+  const title = el("input", { type: "text", placeholder: "Visite des 4 mois", value: existing?.title || "" });
+  const prac = el("input", { type: "text", placeholder: "Dr Martin", value: existing?.practitioner || "" });
+  const loc = el("input", { type: "text", placeholder: "Cabinet", value: existing?.location || "" });
+  const date = el("input", { type: "datetime-local",
+    value: existing ? toLocalDT(existing.date) : nowLocal(1) });
+  const notes = el("textarea", { placeholder: "Notes (questions à poser, à apporter…)", value: existing?.notes || "" });
+
+  const children = [field("Titre", title), field("Praticien", prac), field("Lieu", loc),
+                    field("Date", date), field("Notes", notes)];
+
+  if (existing) {
+    children.push(el("button", { class: "sheet-secondary", style: "color:#c0392b;margin-top:8px",
+      onclick: async () => {
+        if (confirm(`Supprimer le rendez-vous « ${existing.title} » ?`)) {
+          await ctx.store.remove("appointments", existing.id); closeSheet(); toast("RDV supprimé");
+        }
+      } }, "🗑 Supprimer ce rendez-vous"));
+  }
+
+  openSheet(existing ? "Rendez-vous" : "Nouveau RDV", el("div", {}, children), { onSave: async () => {
     if (!title.value.trim()) return toast("Indiquez un titre");
-    await ctx.store.insert("appointments", { id: uuid(), title: title.value.trim(), practitioner: prac.value,
-      location: loc.value, notes: null, date: new Date(date.value).toISOString() });
-    closeSheet(); toast("RDV ajouté");
+    const data = {
+      title: title.value.trim(), practitioner: prac.value, location: loc.value,
+      notes: notes.value || null, date: new Date(date.value).toISOString(),
+    };
+    if (existing) {
+      await ctx.store.update("appointments", existing.id, data);
+      toast("RDV modifié");
+    } else {
+      await ctx.store.insert("appointments", { id: uuid(), ...data });
+      toast("RDV ajouté");
+    }
+    closeSheet();
   }});
+}
+
+function toLocalDT(iso) {
+  const d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
 }
 
 function sheetMeasurement(ctx) {
