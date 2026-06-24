@@ -1,0 +1,38 @@
+name: Déployer l'app web (GitHub Pages)
+
+# Publie le contenu de web/ sur GitHub Pages, gratuitement.
+# Pré-requis (une fois) : Repo → Settings → Pages → Source = "GitHub Actions".
+
+on:
+  push:
+    branches:
+      - claude/app-coding-9fyfbx
+      - main
+    paths:
+      - "web/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4
