@@ -167,9 +167,26 @@ function traduire(m) {
 //  Service worker (mode appli / hors-ligne)
 // ----------------------------------------------------------------
 function registerSW() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+  if (!("serviceWorker" in navigator)) return;
+
+  // Si une version est déjà installée, on rechargera automatiquement
+  // dès qu'une nouvelle version prend la main (plus de version figée).
+  if (navigator.serviceWorker.controller) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
   }
+
+  navigator.serviceWorker.register("sw.js").then((reg) => {
+    reg.update();
+    // Revérifie à chaque retour dans l'app.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") reg.update();
+    });
+  }).catch(() => {});
 }
 
 boot();
