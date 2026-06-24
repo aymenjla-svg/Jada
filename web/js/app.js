@@ -176,6 +176,7 @@ function traduire(m) {
   if (/Invalid login/i.test(m)) return "Email ou mot de passe incorrect.";
   if (/already registered/i.test(m)) return "Ce compte existe déjà — connectez-vous.";
   if (/at least 6/i.test(m)) return "Mot de passe : 6 caractères minimum.";
+  if (/signups? not allowed|disabled/i.test(m)) return "Les inscriptions sont fermées (accès réservé à la famille).";
   return m;
 }
 
