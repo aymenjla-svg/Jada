@@ -1,6 +1,7 @@
 import { el, ringSVG, openSheet, closeSheet, toast, field, segmented, caregiverToggle } from "../ui.js";
 import { uuid, fmtTime, fmtElapsed, relative, ageDescription, STOOL_COLORS } from "../data.js";
 import { openWelcomeSheet } from "../welcome.js";
+import { computeReminders } from "../notify.js";
 
 const REF_INTERVAL = 3 * 3600 * 1000; // 3 h de référence pour remplir l'anneau
 
@@ -82,9 +83,11 @@ export function renderMaman(ctx) {
     ? ongoingSleepCard(ctx, ongoingSleep)
     : el("button", { class: "btn-feed sleep", onclick: () => startSleep(ctx) }, "🌙 Endormie (démarrer le sommeil)");
 
-  // Rappel visuel doux si la dernière tétée date un peu.
-  const reminder = (lastFeed && elapsed > REF_INTERVAL && !ongoingFeed)
-    ? el("div", { class: "reminder" }, `💡 ${fmtElapsed(elapsed)} depuis la dernière tétée`)
+  // Rappels (tétée en retard, vaccin/RDV proche)
+  const rems = computeReminders(cache);
+  const reminder = rems.length
+    ? el("div", { class: "card reminders" }, rems.map((r) =>
+        el("div", { class: "reminder-item" }, [el("span", { class: "ri-ic" }, r.icon), el("span", {}, r.text)])))
     : null;
 
   // Résumé du jour

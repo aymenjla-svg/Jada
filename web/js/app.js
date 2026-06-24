@@ -6,6 +6,7 @@ import { renderMaman } from "./views/maman.js";
 import { renderSante } from "./views/sante.js";
 import { renderAlbum } from "./views/album.js";
 import { welcomeSound } from "./sound.js";
+import { checkReminders } from "./notify.js";
 
 const root = () => document.getElementById("root");
 
@@ -32,6 +33,7 @@ async function boot() {
   ctx.store = await createStore();
   ctx.store.onChange(refresh);
   await refresh();
+  startReminderLoop();
 }
 
 async function refresh() {
@@ -43,6 +45,14 @@ async function refresh() {
   ]);
   ctx.cache = { child, events, measurements, vaccines, appointments, medical_entries, daily_photos };
   render();
+  checkReminders(ctx.cache);
+}
+
+// Revérifie les rappels chaque minute tant que l'app est ouverte (ex. tétée qui dépasse 3h).
+let reminderTimer = null;
+function startReminderLoop() {
+  if (reminderTimer) return;
+  reminderTimer = setInterval(() => { if (ctx.cache.child) checkReminders(ctx.cache); }, 60000);
 }
 
 // ----------------------------------------------------------------

@@ -1,9 +1,13 @@
-import { el, openSheet, closeSheet, toast, field } from "./ui.js";
+import { el, openSheet, closeSheet, toast, field, segmented } from "./ui.js";
 import {
   getWelcomeAudio, setWelcomeAudio, clearWelcomeAudio,
   getWelcomeText, setWelcomeText, clearWelcomeText,
   isSoundEnabled, setSoundEnabled, speak,
 } from "./sound.js";
+import {
+  remindersOn, setRemindersOn, feedIntervalH, setFeedIntervalH,
+  requestNotifPermission, notifSupported,
+} from "./notify.js";
 
 export function openWelcomeSheet() {
   let mr = null, chunks = [], stream = null, timer = null, recording = false;
@@ -76,9 +80,37 @@ export function openWelcomeSheet() {
 
   onoff.onclick = () => { setSoundEnabled(!isSoundEnabled()); refresh(); };
 
+  // --- Rappels ---
+  const notifBtn = el("button", { class: "sheet-secondary" });
+  const intervalSeg = segmented(
+    [{ id: "0", label: "Off" }, { id: "2", label: "2 h" }, { id: "3", label: "3 h" }, { id: "4", label: "4 h" }],
+    String(feedIntervalH()),
+    (v) => setFeedIntervalH(Number(v))
+  );
+  function refreshNotif() {
+    const on = remindersOn() && (!notifSupported() || Notification.permission === "granted");
+    notifBtn.textContent = on ? "🔔 Notifications : activées" : "🔕 Activer les notifications";
+  }
+  notifBtn.onclick = async () => {
+    if (remindersOn()) { setRemindersOn(false); refreshNotif(); return; }
+    const res = await requestNotifPermission();
+    if (res === "granted") { setRemindersOn(true); toast("Notifications activées"); }
+    else if (res === "unsupported") { setRemindersOn(true); toast("Rappels visibles dans l'app (notifs non gérées ici)"); }
+    else toast("Notifications refusées par le navigateur");
+    refreshNotif();
+  };
+
   const content = el("div", {}, [
-    el("p", { class: "muted", style: "font-size:14px;line-height:1.5" },
-      "Choisis un petit mot joué au lancement de l'app (dès que tu touches l'écran)."),
+    el("div", { class: "ws-block" }, [
+      el("div", { class: "ws-title" }, "🔔 Rappels"),
+      el("p", { class: "muted", style: "font-size:13px;line-height:1.5;margin-bottom:10px" },
+        "Rappel de tétée si le délai dépasse l'intervalle choisi, + vaccins et RDV proches. (Les notifications hors-app marchent surtout si l'app est sur l'écran d'accueil.)"),
+      field("Intervalle entre tétées", intervalSeg.node),
+      el("div", { style: "margin-top:10px" }, notifBtn),
+    ]),
+
+    el("p", { class: "muted", style: "font-size:14px;line-height:1.5;margin-top:16px" },
+      "Son joué au lancement de l'app (dès que tu touches l'écran)."),
 
     el("div", { class: "ws-block" }, [
       el("div", { class: "ws-title" }, "🎙️ Ta voix"),
@@ -96,5 +128,6 @@ export function openWelcomeSheet() {
   ]);
 
   refresh();
-  openSheet("Son d'accueil", content, { onSave: closeSheet, saveLabel: "OK" });
+  refreshNotif();
+  openSheet("Réglages", content, { onSave: closeSheet, saveLabel: "OK" });
 }

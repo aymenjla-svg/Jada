@@ -176,8 +176,10 @@ body {
 .stat-val { font-family: var(--font-round); font-weight: 700; font-size: 19px; color: var(--ink); margin-top: 2px; }
 .stat-lab { font-family: var(--font-mono); font-size: 10px; color: var(--ink-2); text-transform: uppercase; }
 
-/* Rappel doux */
-.reminder { text-align: center; font-size: 13px; color: var(--lavender-deep); background: rgba(169,138,214,.12); border-radius: 999px; padding: 7px 14px; margin: 0 auto 14px; max-width: max-content; }
+/* Rappels */
+.reminders { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(169,138,214,.35); }
+.reminder-item { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--ink); }
+.reminder-item .ri-ic { font-size: 18px; }
 
 /* ---------- Boutons ---------- */
 
