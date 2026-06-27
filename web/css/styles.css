@@ -406,3 +406,12 @@ body{ background:linear-gradient(170deg,#FBECE8 0%,#F6E2EE 45%,#EDE6FB 100%); }
 .badge .emo{ width:14px; height:14px }
 .album-empty-ic{ width:46px; height:46px; margin:0 auto }
 .btn-emo{ width:18px; height:18px }
+
+/* v2.1 — correctif en-tête : empiler salutation / prénom + alignements */
+.screen-head{ align-items:center; gap:10px; }
+.hello{ flex:1; min-width:0; }
+.hello > div{ min-width:0; }
+.hello .greeting{ display:flex; align-items:center; gap:5px; }
+.name-row{ display:flex; align-items:center; gap:7px; }
+.title-xl{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.screen-head > div:last-child{ flex:0 0 auto; }
