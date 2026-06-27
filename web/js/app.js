@@ -6,6 +6,7 @@ import { renderMaman } from "./views/maman.js";
 import { renderSante } from "./views/sante.js";
 import { renderAlbum } from "./views/album.js";
 import { renderJournal } from "./views/journal.js";
+import { renderStats } from "./views/stats.js";
 import { welcomeSound } from "./sound.js";
 import { checkReminders } from "./notify.js";
 import { emoji } from "./icons.js";
@@ -69,6 +70,7 @@ function render() {
 
   const view = ctx.tab === "maman" ? renderMaman(ctx)
     : ctx.tab === "journal" ? renderJournal(ctx)
+    : ctx.tab === "stats" ? renderStats(ctx)
     : ctx.tab === "sante" ? renderSante(ctx)
     : renderAlbum(ctx);
   r.appendChild(view);
@@ -85,6 +87,7 @@ function tabbar() {
   return el("div", { class: "tabbar" }, [
     make("maman", "tetee", "Maman"),
     make("journal", "calendrier", "Journal"),
+    make("stats", "graph", "Stats"),
     make("sante", "steto", "Santé"),
     make("album", "photo", "Album"),
   ]);

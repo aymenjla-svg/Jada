@@ -2,7 +2,7 @@
 // instantané et un fonctionnement hors-ligne (les données, elles, ont besoin du
 // réseau en mode synchro).
 
-const CACHE = "jada-v25";
+const CACHE = "jada-v27";
 const SHELL = [
   "./",
   "./index.html",
@@ -17,6 +17,7 @@ const SHELL = [
   "./js/views/sante.js",
   "./js/views/album.js",
   "./js/views/journal.js",
+  "./js/views/stats.js",
   "./js/sound.js",
   "./js/notify.js",
   "./js/welcome.js",

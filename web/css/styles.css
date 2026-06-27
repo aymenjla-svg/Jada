@@ -435,3 +435,19 @@ body{ background:linear-gradient(170deg,#FBECE8 0%,#F6E2EE 45%,#EDE6FB 100%); }
 /* 4 onglets : un peu plus serré */
 .tabbar .tab{ padding:4px 6px; }
 .tab > div:last-child{ font-size:10.5px; }
+
+/* ---------- Stats (tendances) ---------- */
+.stats-controls{ margin-bottom:12px; }
+.stats-controls .seg button{ padding:8px 4px; font-size:12.5px; }
+.stats-summary{ display:flex; justify-content:space-around; }
+.ss-cell{ flex:1; text-align:center; }
+.ss-val{ font-family:var(--font-display); font-weight:600; font-size:20px; }
+.ss-lab{ font-family:var(--font-mono); font-size:9px; letter-spacing:.03em; text-transform:uppercase; color:var(--ink3,#B9A6BD); margin-top:2px; }
+
+/* 5 onglets : encore plus serré */
+.tabbar .tab{ padding:4px 3px; }
+.tabbar .tab .ti .emo{ width:22px; height:22px; }
+.tabbar .tab > div:last-child{ font-size:10px; }
+
+.tabbar .tab{ flex:1 1 0; min-width:0; }
+.tabbar .tab > div:last-child{ white-space:nowrap; }
