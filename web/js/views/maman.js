@@ -309,11 +309,17 @@ function editFeedSheet(ctx, ev) {
 
 // ---------- Sommeil minuté ----------
 async function startSleep(ctx) {
+  // Si une tétée est restée en cours, on la termine (filet de sécurité).
+  const feeding = ctx.cache.events.find((e) => e.type === "feeding" && e.payload && e.payload.ongoing);
+  if (feeding) {
+    const sec = Math.max(1, Math.round((Date.now() - new Date(feeding.timestamp)) / 1000));
+    await ctx.store.update("events", feeding.id, { payload: { kind: "sein", side: feeding.payload.side || "gauche", durationSec: sec } });
+  }
   await ctx.store.insert("events", {
     id: uuid(), type: "sleep", timestamp: new Date().toISOString(),
     created_by: ctx.caregiver, note: null, payload: { ongoing: true },
   });
-  toast("Sommeil démarré 😴");
+  toast(feeding ? "Tétée terminée · sommeil démarré 😴" : "Sommeil démarré 😴");
 }
 
 function ongoingSleepCard(ctx, ev) {
