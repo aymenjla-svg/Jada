@@ -222,6 +222,12 @@ function fmtClock(ms) {
 }
 
 async function startFeed(ctx, completedFeeds) {
+  // Si un sommeil est en cours, bébé se réveille pour téter : on le termine.
+  const sleeping = ctx.cache.events.find((e) => e.type === "sleep" && e.payload && e.payload.ongoing);
+  if (sleeping) {
+    const sec = Math.max(1, Math.round((Date.now() - new Date(sleeping.timestamp)) / 1000));
+    await ctx.store.update("events", sleeping.id, { payload: { durationSec: sec } });
+  }
   // Alterne automatiquement le côté par rapport à la dernière tétée au sein.
   const lastSide = completedFeeds.find((f) => f.payload && f.payload.side)?.payload?.side;
   const side = lastSide === "gauche" ? "droite" : "gauche";
@@ -230,7 +236,7 @@ async function startFeed(ctx, completedFeeds) {
     created_by: ctx.caregiver, note: null,
     payload: { kind: "sein", side, ongoing: true },
   });
-  toast("Tétée démarrée ⏱️");
+  toast(sleeping ? "Sommeil terminé · tétée démarrée ⏱️" : "Tétée démarrée ⏱️");
 }
 
 function ongoingFeedCard(ctx, ev) {
