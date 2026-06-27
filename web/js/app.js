@@ -5,6 +5,7 @@ import { el, clear, toast } from "./ui.js";
 import { renderMaman } from "./views/maman.js";
 import { renderSante } from "./views/sante.js";
 import { renderAlbum } from "./views/album.js";
+import { renderJournal } from "./views/journal.js";
 import { welcomeSound } from "./sound.js";
 import { checkReminders } from "./notify.js";
 import { emoji } from "./icons.js";
@@ -17,6 +18,7 @@ const ctx = {
   tab: "maman",
   cache: { child: null, events: [], measurements: [], vaccines: [], appointments: [], medical_entries: [], daily_photos: [] },
   setCaregiver(v) { ctx.caregiver = v; localStorage.setItem("jada:caregiver", v); render(); },
+  rerender() { render(); },
 };
 
 // ----------------------------------------------------------------
@@ -66,6 +68,7 @@ function render() {
   if (!ctx.cache.child) { r.appendChild(onboarding()); return; }
 
   const view = ctx.tab === "maman" ? renderMaman(ctx)
+    : ctx.tab === "journal" ? renderJournal(ctx)
     : ctx.tab === "sante" ? renderSante(ctx)
     : renderAlbum(ctx);
   r.appendChild(view);
@@ -81,6 +84,7 @@ function tabbar() {
   };
   return el("div", { class: "tabbar" }, [
     make("maman", "tetee", "Maman"),
+    make("journal", "calendrier", "Journal"),
     make("sante", "steto", "Santé"),
     make("album", "photo", "Album"),
   ]);
