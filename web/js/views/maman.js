@@ -2,29 +2,31 @@ import { el, ringSVG, openSheet, closeSheet, toast, field, segmented, caregiverT
 import { uuid, fmtTime, fmtElapsed, relative, ageDescription, STOOL_COLORS } from "../data.js";
 import { openWelcomeSheet } from "../welcome.js";
 import { computeReminders } from "../notify.js";
+import { emoji, eventVisual } from "../icons.js";
 
 const REF_INTERVAL = 3 * 3600 * 1000; // 3 h de référence pour remplir l'anneau
 
-// Décrit un événement (icône, libellé, couleur).
+// Décrit un événement : emoji + couleur de catégorie + libellé.
 function describe(e) {
   const p = e.payload || {};
+  const v = eventVisual(e);
+  let text = e.type;
   if (e.type === "feeding") {
-    if (p.kind === "biberon") return { ic: "🍼", tint: "pink", text: `Biberon${p.volumeMl ? ` · ${p.volumeMl} ml` : ""}` };
-    const side = p.side === "gauche" ? " G" : p.side === "droite" ? " D" : "";
-    const dur = p.durationSec ? ` · ${Math.round(p.durationSec / 60)} min` : "";
-    return { ic: "🤱", tint: "pink", text: `Tétée${side}${dur}` };
-  }
-  if (e.type === "hydration") return { ic: "💧", tint: "water", text: `${p.product || "Adiaryl"} · ${p.volumeMl} ml` };
-  if (e.type === "diaper") {
+    if (p.kind === "biberon") text = `Biberon${p.volumeMl ? ` · ${p.volumeMl} ml` : ""}`;
+    else {
+      const side = p.side === "gauche" ? " G" : p.side === "droite" ? " D" : "";
+      const dur = p.durationSec ? ` · ${Math.round(p.durationSec / 60)} min` : "";
+      text = `Tétée${side}${dur}`;
+    }
+  } else if (e.type === "hydration") {
+    text = `${p.product || "Adiaryl"} · ${p.volumeMl} ml`;
+  } else if (e.type === "diaper") {
     const k = p.kind === "caca" ? "Caca" : p.kind === "mixte" ? "Mixte" : "Pipi";
-    const col = p.stoolColor ? ` · ${p.stoolColor}` : "";
-    return { ic: p.kind === "pipi" ? "💦" : "💩", tint: "lav", text: `Couche ${k.toLowerCase()}${col}` };
+    text = `Couche ${k.toLowerCase()}${p.stoolColor ? ` · ${p.stoolColor}` : ""}`;
+  } else if (e.type === "sleep") {
+    text = `Sommeil${p.durationSec ? ` · ${fmtDur(p.durationSec)}` : ""}`;
   }
-  if (e.type === "sleep") {
-    const dur = p.durationSec ? ` · ${fmtDur(p.durationSec)}` : "";
-    return { ic: "😴", tint: "plum", text: `Sommeil${dur}` };
-  }
-  return { ic: "•", tint: "plum", text: e.type };
+  return { emo: v.emo, cat: v.cat, text };
 }
 
 // Durée lisible : « 1h05 », « 18 min », « 45 s ».
@@ -40,6 +42,7 @@ export function renderMaman(ctx) {
   stopLiveTimers();
   const { cache } = ctx;
   const child = cache.child;
+  const greet = greeting();
   const feeds = cache.events.filter((e) => e.type === "feeding").sort(byTimeDesc);
   const ongoingFeed = feeds.find((e) => e.payload && e.payload.ongoing);
   const completedFeeds = feeds.filter((e) => !(e.payload && e.payload.ongoing));
@@ -63,7 +66,7 @@ export function renderMaman(ctx) {
   if (lastFeed) {
     const d = describe(lastFeed);
     lastCard.appendChild(el("div", { class: "last-row" }, [
-      el("div", { class: "avatar " + d.tint }, d.ic),
+      el("div", { class: "avatar i-" + d.cat }, emoji(d.emo)),
       el("div", {}, [
         el("div", { class: "t" }, d.text),
         el("div", { class: "s" }, `${relative(eventTime(lastFeed))} · par ${cgLabel(lastFeed.created_by)}`),
@@ -76,36 +79,36 @@ export function renderMaman(ctx) {
   // Tétée minutée : bouton « Commencer » ou carte « en cours ».
   const feedControl = ongoingFeed
     ? ongoingFeedCard(ctx, ongoingFeed)
-    : el("button", { class: "btn-feed", onclick: () => startFeed(ctx, completedFeeds) }, "▶︎ Commencer la tétée");
+    : el("button", { class: "btn-feed", onclick: () => startFeed(ctx, completedFeeds) }, [el("span", { class: "tri" }), "Commencer la tétée"]);
 
   // Sommeil minuté : « Endormie » / carte « en cours ».
   const sleepControl = ongoingSleep
     ? ongoingSleepCard(ctx, ongoingSleep)
-    : el("button", { class: "btn-feed sleep", onclick: () => startSleep(ctx) }, "🌙 Endormie (démarrer le sommeil)");
+    : el("button", { class: "btn-feed sleep", onclick: () => startSleep(ctx) }, [emoji("lune"), "Endormie · démarrer le sommeil"]);
 
   // Rappels (tétée en retard, vaccin/RDV proche)
   const rems = computeReminders(cache);
   const reminder = rems.length
     ? el("div", { class: "card reminders" }, rems.map((r) =>
-        el("div", { class: "reminder-item" }, [el("span", { class: "ri-ic" }, r.icon), el("span", {}, r.text)])))
+        el("div", { class: "reminder-item" }, [el("span", { class: "ri-ic" }, emoji(r.emo || "cloche")), el("span", {}, r.text)])))
     : null;
 
   // Résumé du jour
   const s = daySummary(cache.events);
   const summaryCard = el("div", { class: "card summary" }, [
-    statCell("🤱", String(s.feeds), "tétées"),
-    statCell("🍼", s.ml ? `${s.ml}` : "—", "ml bib."),
-    statCell("💩", String(s.diapers), "couches"),
-    statCell("😴", s.sleepSec ? fmtDur(s.sleepSec) : "—", "sommeil"),
+    statCell("tetee", String(s.feeds), "tétées"),
+    statCell("biberon", s.ml ? `${s.ml}` : "—", "ml bib."),
+    statCell("couche", String(s.diapers), "couches"),
+    statCell("sommeil", s.sleepSec ? fmtDur(s.sleepSec) : "—", "sommeil"),
   ]);
 
   // Grille d'actions
   const actions = el("div", { class: "card" }, [
     el("div", { class: "actions" }, [
-      chip("🤱", "Tétée", "rgba(232,160,214,.18)", () => sheetFeeding(ctx)),
-      chip("🍼", "Biberon", "rgba(232,160,214,.18)", () => sheetFeeding(ctx, "biberon")),
-      chip("💧", "Hydrat.", "rgba(169,200,240,.20)", () => sheetHydration(ctx)),
-      chip("💩", "Couche", "rgba(169,138,214,.16)", () => sheetDiaper(ctx)),
+      chip("tetee", "Tétée", "feed", () => sheetFeeding(ctx)),
+      chip("biberon", "Biberon", "bot", () => sheetFeeding(ctx, "biberon")),
+      chip("eau", "Hydrat.", "water", () => sheetHydration(ctx)),
+      chip("couche", "Couche", "diap", () => sheetDiaper(ctx)),
     ]),
   ]);
 
@@ -119,7 +122,7 @@ export function renderMaman(ctx) {
     const d = describe(e);
     const editor = EDITORS[e.type];
     const row = el("div", { class: "event" + (editor ? " tappable" : "") }, [
-      el("div", { class: "mini " + d.tint }, d.ic),
+      el("div", { class: "mini i-" + d.cat }, emoji(d.emo)),
       el("div", { style: "flex:1;min-width:0" }, [el("div", { class: "t" }, d.text), el("div", { class: "by" }, "par " + cgLabel(e.created_by))]),
       el("div", { class: "time" }, fmtTime(eventTime(e))),
     ]);
@@ -132,17 +135,17 @@ export function renderMaman(ctx) {
       el("div", { class: "hello" }, [
         el("div", { class: "hello-av" }, (child?.name || "B").trim().charAt(0).toUpperCase()),
         el("div", {}, [
-          el("div", { class: "greeting" }, greeting()),
+          el("div", { class: "greeting" }, [greet.label + " ", emoji(greet.emo)]),
           el("div", { class: "name-row" }, [
             el("div", { class: "title-xl" }, child?.name || "Bébé"),
-            el("span", { class: "name-heart" }, "💗"),
+            el("span", { class: "name-heart" }, emoji("coeur")),
           ]),
         ]),
       ]),
       el("div", { style: "text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px" }, [
-        el("div", { class: "age-pill" }, child ? "👶 " + ageDescription(child.birth_date) : ""),
+        el("div", { class: "age-pill" }, child ? [emoji("bebe"), " " + ageDescription(child.birth_date)] : ""),
         el("div", { style: "display:flex;align-items:center;gap:8px" }, [
-          el("button", { class: "sound-btn", title: "Son d'accueil", onclick: () => openWelcomeSheet() }, "🔔"),
+          el("button", { class: "sound-btn", title: "Réglages", onclick: () => openWelcomeSheet() }, emoji("cloche")),
           caregiverBadge(ctx),
         ]),
       ]),
@@ -165,15 +168,15 @@ export function renderMaman(ctx) {
 }
 
 // ---------- Pastilles ----------
-function chip(ic, cap, bg, onclick) {
+function chip(emoName, cap, cat, onclick) {
   return el("button", { class: "chip", onclick }, [
-    el("div", { class: "ic", style: `background:${bg}` }, ic),
+    el("div", { class: "ic i-" + cat }, emoji(emoName)),
     el("div", { class: "cap" }, cap),
   ]);
 }
 
 function caregiverBadge(ctx) {
-  const b = el("button", { class: "badge" }, ["👤 " + cgLabel(ctx.caregiver)]);
+  const b = el("button", { class: "badge" }, [emoji("personne"), " " + cgLabel(ctx.caregiver)]);
   b.onclick = () => {
     ctx.setCaregiver(ctx.caregiver === "maman" ? "papa" : "maman");
     toast("Vous êtes : " + cgLabel(ctx.caregiver));
@@ -196,10 +199,10 @@ function eventTime(e) {
 // Salutation douce selon l'heure (la lune pour les tétées de nuit).
 function greeting() {
   const h = new Date().getHours();
-  if (h < 5) return "Coucou 🌙";
-  if (h < 12) return "Bonjour ☀️";
-  if (h < 18) return "Coucou 🌸";
-  return "Bonsoir 🌙";
+  if (h < 5) return { label: "Coucou", emo: "lune" };
+  if (h < 12) return { label: "Bonjour", emo: "soleil" };
+  if (h < 18) return { label: "Coucou", emo: "fleur" };
+  return { label: "Bonsoir", emo: "lune" };
 }
 
 // ============================================================
@@ -248,7 +251,7 @@ function ongoingFeedCard(ctx, ev) {
 
   return el("div", { class: "card feed-live" }, [
     el("div", { class: "feed-live-head" }, [
-      el("span", {}, "🤱 Tétée en cours"),
+      el("span", {}, [emoji("tetee"), " Tétée en cours"]),
       el("span", { class: "pill" }, "par " + cgLabel(ev.created_by)),
     ]),
     el("div", { class: "feed-timer-wrap" }, timer),
@@ -314,10 +317,10 @@ function ongoingSleepCard(ctx, ev) {
     const sec = Math.max(1, Math.round((Date.now() - new Date(ev.timestamp)) / 1000));
     await ctx.store.update("events", ev.id, { payload: { durationSec: sec } });
     toast("Sommeil enregistré ✓");
-  } }, "☀️ Réveillée (fin du sommeil)");
+  } }, [emoji("soleil"), "Réveillée (fin du sommeil)"]);
   return el("div", { class: "card feed-live sleep" }, [
     el("div", { class: "feed-live-head" }, [
-      el("span", {}, "😴 Sommeil en cours"),
+      el("span", {}, [emoji("sommeil"), " Sommeil en cours"]),
       el("span", { class: "pill" }, "par " + cgLabel(ev.created_by)),
     ]),
     el("div", { class: "feed-timer-wrap" }, timer),
@@ -394,9 +397,9 @@ function daySummary(events) {
   const sleepSec = today.filter((e) => e.type === "sleep").reduce((sum, e) => sum + (e.payload?.durationSec || 0), 0);
   return { feeds: feeds.length, ml, diapers, sleepSec };
 }
-function statCell(ic, val, label) {
+function statCell(emoName, val, label) {
   return el("div", { class: "stat" }, [
-    el("div", { class: "stat-ic" }, ic),
+    el("div", { class: "stat-ic" }, emoji(emoName)),
     el("div", { class: "stat-val" }, val),
     el("div", { class: "stat-lab" }, label),
   ]);

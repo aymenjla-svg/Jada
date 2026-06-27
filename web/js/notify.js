@@ -53,7 +53,7 @@ export function computeReminders(cache) {
         icon: "🍼", title: "Pensez à la tétée",
         text: `Tétée : ${h}h${String(m).padStart(2, "0")} depuis la dernière`,
         body: `${h}h${String(m).padStart(2, "0")} depuis la dernière tétée.`,
-        key: "feed", stamp: lastFeed.id || lastFeed.timestamp,
+        key: "feed", emo: "biberon", stamp: lastFeed.id || lastFeed.timestamp,
       });
     }
   }
@@ -67,7 +67,7 @@ export function computeReminders(cache) {
     if (days <= 14) {
       const when = days <= 0 ? "à faire" : `dans ${days} j`;
       out.push({ icon: "💉", title: "Vaccin à prévoir", text: `Vaccin ${nextVac.name} ${when}`,
-        body: `${nextVac.name} ${when}.`, key: "vaccine-" + nextVac.id, stamp: todayStr });
+        body: `${nextVac.name} ${when}.`, key: "vaccine-" + nextVac.id, emo: "vaccin", stamp: todayStr });
     }
   }
 
@@ -80,7 +80,7 @@ export function computeReminders(cache) {
     if (days <= 2) {
       const when = days <= 0 ? "aujourd'hui" : days === 1 ? "demain" : `dans ${days} j`;
       out.push({ icon: "🩺", title: "Rendez-vous bientôt", text: `RDV ${nextAppt.title} ${when}`,
-        body: `${nextAppt.title} ${when}.`, key: "appt-" + nextAppt.id, stamp: todayStr });
+        body: `${nextAppt.title} ${when}.`, key: "appt-" + nextAppt.id, emo: "steto", stamp: todayStr });
     }
   }
 

@@ -1,5 +1,6 @@
 import { el, openSheet, closeSheet, toast, field, segmented } from "../ui.js";
 import { uuid, fmtDay, fmtFull } from "../data.js";
+import { emoji } from "../icons.js";
 
 export function renderSante(ctx) {
   const { cache } = ctx;
@@ -13,9 +14,9 @@ export function renderSante(ctx) {
 
   // --- Échéances ---
   const ech = el("div", { class: "card" });
-  if (nextVaccine) ech.appendChild(echeance("💉", nextVaccine.name,
+  if (nextVaccine) ech.appendChild(echeance("vaccin", "sleep", nextVaccine.name,
     nextVaccine.due_date ? "Vers " + fmtFull(nextVaccine.due_date) : `Vers ${nextVaccine.months} mois`));
-  if (nextAppt) ech.appendChild(echeance("🩺", nextAppt.title,
+  if (nextAppt) ech.appendChild(echeance("steto", "feed", nextAppt.title,
     fmtFull(nextAppt.date) + (nextAppt.practitioner ? " · " + nextAppt.practitioner : "")));
   if (!nextVaccine && !nextAppt) ech.appendChild(el("div", { class: "empty" }, "Aucune échéance à venir."));
 
@@ -76,9 +77,9 @@ export function renderSante(ctx) {
   ]);
 }
 
-function echeance(ic, title, sub) {
+function echeance(emoName, cat, title, sub) {
   return el("div", { class: "echeance" }, [
-    el("div", { class: "avatar lav" }, ic),
+    el("div", { class: "avatar i-" + cat }, emoji(emoName)),
     el("div", {}, [el("div", { style: "font-weight:500" }, title), el("div", { class: "s", style: "font-size:13px;color:var(--ink-2)" }, sub)]),
   ]);
 }
@@ -102,7 +103,7 @@ function apptsCard(ctx, appts) {
     const isPast = new Date(a.date).getTime() < now;
     const sub = [fmtFull(a.date), a.practitioner, a.location].filter(Boolean).join(" · ");
     const row = el("div", { class: "appt tappable" + (isPast ? " past" : "") }, [
-      el("div", { class: "avatar pink" }, "🩺"),
+      el("div", { class: "avatar i-feed" }, emoji("steto")),
       el("div", { style: "flex:1;min-width:0" }, [
         el("div", { style: "font-weight:500" }, a.title),
         el("div", { class: "appt-sub" }, sub),

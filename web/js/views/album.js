@@ -1,5 +1,6 @@
 import { el, openSheet, closeSheet, toast, field } from "../ui.js";
 import { uuid, fmtFull, fmtDay } from "../data.js";
+import { emoji } from "../icons.js";
 
 const cg = (id) => (id === "papa" ? "Papa" : "Maman");
 const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -21,13 +22,13 @@ export function renderAlbum(ctx) {
       fmtFull(todayPhoto.day) + " · par " + cg(todayPhoto.created_by)));
   } else {
     featured.appendChild(el("div", { class: "album-empty" }, [
-      el("div", { style: "font-size:42px" }, "📷"),
+      emoji("photo", "emo album-empty-ic"),
       el("div", { class: "muted", style: "margin-top:6px" }, "Pas encore de photo aujourd'hui"),
     ]));
   }
 
   const addBtn = el("button", { class: "btn-primary", style: "margin-top:12px", onclick: () => fileInput.click() },
-    "📸 Ajouter une photo");
+    [emoji("photo", "emo btn-emo"), "Ajouter une photo"]);
 
   // Calendrier-vignettes (une par jour)
   const grid = el("div", { class: "album-grid" });

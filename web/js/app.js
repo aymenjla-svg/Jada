@@ -7,6 +7,7 @@ import { renderSante } from "./views/sante.js";
 import { renderAlbum } from "./views/album.js";
 import { welcomeSound } from "./sound.js";
 import { checkReminders } from "./notify.js";
+import { emoji } from "./icons.js";
 
 const root = () => document.getElementById("root");
 
@@ -72,16 +73,16 @@ function render() {
 }
 
 function tabbar() {
-  const make = (id, ic, label) => {
+  const make = (id, emoName, label) => {
     const b = el("button", { class: "tab" + (ctx.tab === id ? " active" : "") }, [
-      el("div", { class: "ti" }, ic), el("div", {}, label)]);
+      el("div", { class: "ti" }, emoji(emoName)), el("div", {}, label)]);
     b.onclick = () => { ctx.tab = id; render(); scrollTo(0, 0); };
     return b;
   };
   return el("div", { class: "tabbar" }, [
-    make("maman", "🤱", "Maman"),
-    make("sante", "🩺", "Santé"),
-    make("album", "📸", "Album"),
+    make("maman", "tetee", "Maman"),
+    make("sante", "steto", "Santé"),
+    make("album", "photo", "Album"),
   ]);
 }
 
