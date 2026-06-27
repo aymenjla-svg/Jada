@@ -38,14 +38,15 @@ export function computeReminders(cache) {
   const now = Date.now();
   const todayStr = new Date(now).toISOString().slice(0, 10);
 
-  // Tétée en retard
+  // Tétée en retard (mesurée depuis la FIN de la dernière tétée)
+  const feedEnd = (e) => new Date(e.timestamp).getTime() + (e.payload?.durationSec || 0) * 1000;
   const feeds = (cache.events || [])
     .filter((e) => e.type === "feeding" && !(e.payload && e.payload.ongoing))
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    .sort((a, b) => feedEnd(b) - feedEnd(a));
   const lastFeed = feeds[0];
   const intervalMs = feedIntervalH() * 3600 * 1000;
   if (lastFeed && intervalMs > 0) {
-    const elapsed = now - new Date(lastFeed.timestamp);
+    const elapsed = now - feedEnd(lastFeed);
     if (elapsed >= intervalMs) {
       const h = Math.floor(elapsed / 3600000), m = Math.floor((elapsed % 3600000) / 60000);
       out.push({

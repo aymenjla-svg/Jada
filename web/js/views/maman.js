@@ -44,18 +44,18 @@ export function renderMaman(ctx) {
   const ongoingFeed = feeds.find((e) => e.payload && e.payload.ongoing);
   const completedFeeds = feeds.filter((e) => !(e.payload && e.payload.ongoing));
   const ongoingSleep = cache.events.find((e) => e.type === "sleep" && e.payload && e.payload.ongoing);
-  const all = [...cache.events].sort(byTimeDesc);
-  const lastFeed = completedFeeds[0];
+  const all = [...cache.events].sort((a, b) => eventTime(b) - eventTime(a));
+  const lastFeed = [...completedFeeds].sort((a, b) => eventTime(b) - eventTime(a))[0];
 
-  // Anneau
-  const elapsed = lastFeed ? Date.now() - new Date(lastFeed.timestamp) : 0;
+  // Anneau (mesuré depuis la FIN de la dernière tétée)
+  const elapsed = lastFeed ? Date.now() - eventTime(lastFeed) : 0;
   const progress = lastFeed ? elapsed / REF_INTERVAL : 0;
 
   const ring = el("div", { class: "ring", html: ringSVG(progress) });
   ring.appendChild(el("div", { class: "center" }, [
     el("div", { class: "label" }, "Depuis la dernière tétée"),
     el("div", { class: "big" }, lastFeed ? fmtElapsed(elapsed) : "—"),
-    lastFeed ? el("div", { class: "sub" }, "à " + fmtTime(lastFeed.timestamp)) : null,
+    lastFeed ? el("div", { class: "sub" }, "à " + fmtTime(eventTime(lastFeed))) : null,
   ]));
 
   // Dernier événement
@@ -66,7 +66,7 @@ export function renderMaman(ctx) {
       el("div", { class: "avatar " + d.tint }, d.ic),
       el("div", {}, [
         el("div", { class: "t" }, d.text),
-        el("div", { class: "s" }, `${relative(lastFeed.timestamp)} · par ${cgLabel(lastFeed.created_by)}`),
+        el("div", { class: "s" }, `${relative(eventTime(lastFeed))} · par ${cgLabel(lastFeed.created_by)}`),
       ]),
     ]));
   } else {
@@ -112,7 +112,7 @@ export function renderMaman(ctx) {
   // Fil du jour (on masque la tétée en cours, montrée dans sa carte dédiée)
   const list = el("div", { class: "card tight" });
   const today = all.filter(sameDay)
-    .filter((e) => !(e.type === "feeding" && e.payload && e.payload.ongoing))
+    .filter((e) => !(e.payload && e.payload.ongoing))
     .slice(0, 30);
   if (!today.length) list.appendChild(el("div", { class: "empty" }, "Rien aujourd'hui."));
   else today.forEach((e) => {
@@ -121,7 +121,7 @@ export function renderMaman(ctx) {
     const row = el("div", { class: "event" + (editor ? " tappable" : "") }, [
       el("div", { class: "mini " + d.tint }, d.ic),
       el("div", { style: "flex:1;min-width:0" }, [el("div", { class: "t" }, d.text), el("div", { class: "by" }, "par " + cgLabel(e.created_by))]),
-      el("div", { class: "time" }, fmtTime(e.timestamp)),
+      el("div", { class: "time" }, fmtTime(eventTime(e))),
     ]);
     if (editor) row.onclick = () => editor(ctx, e);
     list.appendChild(row);
@@ -183,6 +183,15 @@ function caregiverBadge(ctx) {
 
 const cgLabel = (id) => (id === "papa" ? "Papa" : "Maman");
 const byTimeDesc = (a, b) => new Date(b.timestamp) - new Date(a.timestamp);
+
+// Heure « parlante » d'un événement : la FIN pour une tétée/un sommeil minuté
+// (début + durée), sinon l'horodatage. Renvoie un nombre (ms).
+function eventTime(e) {
+  const p = e.payload || {};
+  const start = new Date(e.timestamp).getTime();
+  if ((e.type === "feeding" || e.type === "sleep") && p.durationSec) return start + p.durationSec * 1000;
+  return start;
+}
 
 // Salutation douce selon l'heure (la lune pour les tétées de nuit).
 function greeting() {
