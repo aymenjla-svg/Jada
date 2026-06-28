@@ -104,8 +104,8 @@ export function openWelcomeSheet() {
     el("div", { class: "ws-block" }, [
       el("div", { class: "ws-title" }, "🔔 Rappels"),
       el("p", { class: "muted", style: "font-size:13px;line-height:1.5;margin-bottom:10px" },
-        "Rappel de tétée si le délai dépasse l'intervalle choisi, + vaccins et RDV proches. (Les notifications hors-app marchent surtout si l'app est sur l'écran d'accueil.)"),
-      field("Intervalle entre tétées", intervalSeg.node),
+        "Notification quand le dernier repas (tétée ou biberon) OU un sommeil en cours dépasse ce seuil. (Vaccins et RDV restent affichés dans l'app, sans notification.)"),
+      field("Seuil d'alerte (repas / sommeil)", intervalSeg.node),
       el("div", { style: "margin-top:10px" }, notifBtn),
     ]),
 
