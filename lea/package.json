@@ -1,0 +1,18 @@
+{
+  "name": "lea-tuteur-ia",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Léa — Tuteur IA incarné. Phase 0 : contrats uniquement (monolithe modulaire Node/TS).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0"
+  }
+}
