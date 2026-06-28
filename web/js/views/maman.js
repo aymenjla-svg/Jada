@@ -221,13 +221,20 @@ function fmtClock(ms) {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-async function startFeed(ctx, completedFeeds) {
-  // Si un sommeil est en cours, bébé se réveille pour téter : on le termine.
+// Termine un sommeil en cours à l'instant `atISO` (réveil). Renvoie true si fait.
+// Un événement enregistré AVANT le début du sommeil ne le termine pas.
+async function endOngoingSleep(ctx, atISO) {
   const sleeping = ctx.cache.events.find((e) => e.type === "sleep" && e.payload && e.payload.ongoing);
-  if (sleeping) {
-    const sec = Math.max(1, Math.round((Date.now() - new Date(sleeping.timestamp)) / 1000));
-    await ctx.store.update("events", sleeping.id, { payload: { durationSec: sec } });
-  }
+  if (!sleeping) return false;
+  const start = new Date(sleeping.timestamp).getTime();
+  const at = new Date(atISO).getTime();
+  if (at <= start) return false;
+  await ctx.store.update("events", sleeping.id, { payload: { durationSec: Math.max(1, Math.round((at - start) / 1000)) } });
+  return true;
+}
+
+async function startFeed(ctx, completedFeeds) {
+  const woke = await endOngoingSleep(ctx, new Date().toISOString());
   // Alterne automatiquement le côté par rapport à la dernière tétée au sein.
   const lastSide = completedFeeds.find((f) => f.payload && f.payload.side)?.payload?.side;
   const side = lastSide === "gauche" ? "droite" : "gauche";
@@ -236,7 +243,7 @@ async function startFeed(ctx, completedFeeds) {
     created_by: ctx.caregiver, note: null,
     payload: { kind: "sein", side, ongoing: true },
   });
-  toast(sleeping ? "Sommeil terminé · tétée démarrée ⏱️" : "Tétée démarrée ⏱️");
+  toast(woke ? "Sommeil terminé · tétée démarrée ⏱️" : "Tétée démarrée ⏱️");
 }
 
 function ongoingFeedCard(ctx, ev) {
@@ -452,7 +459,8 @@ function sheetFeeding(ctx, forceKind) {
       ? { kind: "sein", side: side.get(), durationSec: Number(range.value) * 60 }
       : { kind: "biberon", volumeMl: Number(vol.value) || null };
     await ctx.store.insert("events", { id: uuid(), type: "feeding", ...base, payload, note: null });
-    closeSheet(); toast("Tétée enregistrée");
+    const woke = await endOngoingSleep(ctx, base.timestamp); // un repas réveille le bébé
+    closeSheet(); toast(woke ? "Repas enregistré · sommeil terminé" : (kind === "biberon" ? "Biberon enregistré" : "Tétée enregistrée"));
   }});
 }
 
@@ -486,9 +494,12 @@ function sheetDiaper(ctx) {
   const content = el("div", {}, [field("Type", seg.node), colorBox, common.node]);
 
   openSheet("Couche", content, { onSave: async () => {
-    await ctx.store.insert("events", { id: uuid(), type: "diaper", ...common.read(),
+    const base = common.read();
+    await ctx.store.insert("events", { id: uuid(), type: "diaper", ...base,
       payload: { kind, stoolColor: kind === "pipi" ? null : color }, note: null });
-    closeSheet(); toast("Couche enregistrée");
+    // Un caca (ou mixte) réveille le bébé : on termine un sommeil en cours.
+    const woke = (kind === "caca" || kind === "mixte") ? await endOngoingSleep(ctx, base.timestamp) : false;
+    closeSheet(); toast(woke ? "Couche enregistrée · sommeil terminé" : "Couche enregistrée");
   }});
 }
 
