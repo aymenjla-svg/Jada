@@ -10,6 +10,12 @@ export function feedIntervalH() {
   return isNaN(v) ? 3 : v;
 }
 export function setFeedIntervalH(h) { localStorage.setItem("jada:feedInterval", String(h)); }
+// Seuil séparé pour le tire-lait (0 = désactivé : toutes les mamans ne tirent pas leur lait).
+export function pumpIntervalH() {
+  const v = parseFloat(localStorage.getItem("jada:pumpInterval"));
+  return isNaN(v) ? 0 : v;
+}
+export function setPumpIntervalH(h) { localStorage.setItem("jada:pumpInterval", String(h)); }
 
 export function notifSupported() { return "Notification" in window; }
 
@@ -75,6 +81,23 @@ export function computeReminders(cache) {
         out.push({ emo: "sommeil", notify: true, key: "sleep", stamp: sleeping.id,
           title: "Sommeil prolongé", text: `Sommeil en cours : ${hm(elapsed)}`,
           body: `Bébé dort depuis ${hm(elapsed)}.` });
+      }
+    }
+  }
+
+  // Dernière séance de tire-lait au-delà du seuil (seuil propre, mesuré depuis sa fin).
+  const pumpMs = pumpIntervalH() * 3600 * 1000;
+  if (pumpMs > 0) {
+    const pumpEnd = (e) => new Date(e.timestamp).getTime() + (e.payload?.durationSec || 0) * 1000;
+    const lastPump = (cache.events || [])
+      .filter((e) => e.type === "pump")
+      .sort((a, b) => pumpEnd(b) - pumpEnd(a))[0];
+    if (lastPump) {
+      const elapsed = now - pumpEnd(lastPump);
+      if (elapsed >= pumpMs) {
+        out.push({ emo: "lait", notify: true, key: "pump", stamp: lastPump.id || lastPump.timestamp,
+          title: "Séance de tire-lait", text: `Dernière séance il y a ${hm(elapsed)}`,
+          body: `${hm(elapsed)} depuis la dernière séance de tire-lait.` });
       }
     }
   }

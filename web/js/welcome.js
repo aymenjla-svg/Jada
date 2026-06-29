@@ -6,6 +6,7 @@ import {
 } from "./sound.js";
 import {
   remindersOn, setRemindersOn, feedIntervalH, setFeedIntervalH,
+  pumpIntervalH, setPumpIntervalH,
   requestNotifPermission, notifSupported,
 } from "./notify.js";
 
@@ -87,6 +88,11 @@ export function openWelcomeSheet() {
     String(feedIntervalH()),
     (v) => setFeedIntervalH(Number(v))
   );
+  const pumpSeg = segmented(
+    [{ id: "0", label: "Off" }, { id: "2", label: "2 h" }, { id: "3", label: "3 h" }, { id: "4", label: "4 h" }],
+    String(pumpIntervalH()),
+    (v) => setPumpIntervalH(Number(v))
+  );
   function refreshNotif() {
     const on = remindersOn() && (!notifSupported() || Notification.permission === "granted");
     notifBtn.textContent = on ? "🔔 Notifications : activées" : "🔕 Activer les notifications";
@@ -106,6 +112,9 @@ export function openWelcomeSheet() {
       el("p", { class: "muted", style: "font-size:13px;line-height:1.5;margin-bottom:10px" },
         "Notification quand le dernier repas (tétée ou biberon) OU un sommeil en cours dépasse ce seuil. (Vaccins et RDV restent affichés dans l'app, sans notification.)"),
       field("Seuil d'alerte (repas / sommeil)", intervalSeg.node),
+      field("Rappel tire-lait", pumpSeg.node),
+      el("p", { class: "muted", style: "font-size:12px;line-height:1.4;margin-top:-4px;margin-bottom:10px" },
+        "Notification quand la dernière séance de tire-lait dépasse ce seuil. Laisse sur « Off » si tu ne tires pas ton lait."),
       el("div", { style: "margin-top:10px" }, notifBtn),
     ]),
 
