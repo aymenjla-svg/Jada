@@ -17,7 +17,7 @@ const ctx = {
   store: null,
   caregiver: localStorage.getItem("jada:caregiver") || "maman",
   tab: "maman",
-  cache: { child: null, events: [], measurements: [], vaccines: [], appointments: [], medical_entries: [], daily_photos: [] },
+  cache: { child: null, events: [], measurements: [], vaccines: [], appointments: [], medical_entries: [], daily_photos: [], milk_stock: [] },
   setCaregiver(v) { ctx.caregiver = v; localStorage.setItem("jada:caregiver", v); render(); },
   rerender() { render(); },
 };
@@ -42,12 +42,13 @@ async function boot() {
 
 async function refresh() {
   const s = ctx.store;
-  const [child, events, measurements, vaccines, appointments, medical_entries, daily_photos] = await Promise.all([
+  const [child, events, measurements, vaccines, appointments, medical_entries, daily_photos, milk_stock] = await Promise.all([
     s.getChild(), s.list("events"), s.list("measurements"),
     s.list("vaccines"), s.list("appointments"), s.list("medical_entries"),
     s.list("daily_photos").catch(() => []),
+    s.list("milk_stock").catch(() => []),
   ]);
-  ctx.cache = { child, events, measurements, vaccines, appointments, medical_entries, daily_photos };
+  ctx.cache = { child, events, measurements, vaccines, appointments, medical_entries, daily_photos, milk_stock };
   render();
   checkReminders(ctx.cache);
 }

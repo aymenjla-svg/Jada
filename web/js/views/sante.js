@@ -1,6 +1,7 @@
 import { el, openSheet, closeSheet, toast, field, segmented } from "../ui.js";
 import { uuid, fmtDay, fmtFull } from "../data.js";
 import { emoji } from "../icons.js";
+import { stockSection } from "./stock.js";
 
 export function renderSante(ctx) {
   const { cache } = ctx;
@@ -60,6 +61,8 @@ export function renderSante(ctx) {
     el("div", { class: "section-title" }, "Rendez-vous"),
     apptsCard(ctx, appts),
     addRow("Ajouter un rendez-vous", () => sheetAppointment(ctx)),
+
+    ...stockSection(ctx),
 
     el("div", { class: "section-title" }, "Courbe de croissance"),
     growth,

@@ -3,6 +3,7 @@ import { uuid, fmtTime, fmtElapsed, relative, ageDescription, STOOL_COLORS } fro
 import { openWelcomeSheet } from "../welcome.js";
 import { computeReminders } from "../notify.js";
 import { emoji, eventVisual } from "../icons.js";
+import { addMilkToStock } from "./stock.js";
 
 const REF_INTERVAL = 3 * 3600 * 1000; // 3 h de référence pour remplir l'anneau
 
@@ -521,19 +522,28 @@ function sheetPump(ctx) {
   const minLabel = el("label", {}, "Durée : 15 min");
   const range = el("input", { type: "range", min: 0, max: 45, value: 15, oninput: () => (minLabel.textContent = `Durée : ${range.value} min`) });
   const sel = pumpSelect(localStorage.getItem("jada:lastPump") || "");
+  // Ajout au stock de lait (le volume exprimé devient un lot conservable).
+  const toStock = el("input", { type: "checkbox", checked: "" });
+  const stockStore = segmented([{ id: "frigo", label: "Frigo" }, { id: "congel", label: "Congél." }], "frigo");
+  const stockRow = el("label", { class: "stock-opt" }, [toStock, el("span", {}, "Ajouter ce volume au stock de lait")]);
   const common = commonFields(ctx);
   const content = el("div", {}, [
     field("Côté", side.node),
     field("Volume exprimé (ml)", vol),
     el("div", { class: "field" }, [minLabel, range]),
     field("Tire-lait", sel),
+    stockRow,
+    field("Conservation", stockStore.node),
     common.node,
   ]);
   openSheet("Tire-lait", content, { onSave: async () => {
     if (sel.value) localStorage.setItem("jada:lastPump", sel.value);
-    await ctx.store.insert("events", { id: uuid(), type: "pump", ...common.read(),
-      payload: { side: side.get(), volumeMl: Number(vol.value) || null, durationSec: Number(range.value) * 60, pump: sel.value || null }, note: null });
-    closeSheet(); toast("Tire-lait enregistré");
+    const c = common.read();
+    const ml = Number(vol.value) || null;
+    await ctx.store.insert("events", { id: uuid(), type: "pump", ...c,
+      payload: { side: side.get(), volumeMl: ml, durationSec: Number(range.value) * 60, pump: sel.value || null }, note: null });
+    if (toStock.checked && ml) await addMilkToStock(ctx, { volumeMl: ml, expressedAtISO: c.timestamp, storage: stockStore.get() });
+    closeSheet(); toast(toStock.checked && ml ? "Tire-lait + stock enregistrés" : "Tire-lait enregistré");
   }});
 }
 

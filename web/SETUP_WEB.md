@@ -40,6 +40,8 @@ bancaire demandée).
    - Crée le projet (attends ~1 min qu'il démarre).
 3. Menu **SQL Editor** → **New query** → copie-colle **tout** le contenu du fichier
    `web/sql/schema.sql` → **Run**. (Ça crée les tables et la sécurité.)
+   Fais de même avec `web/sql/album.sql` (album photo) puis
+   `web/sql/milk_stock.sql` (stock de lait maternel) — chacun dans une nouvelle requête → **Run**.
 4. Menu **Authentication → Sign In / Providers → Email** :
    - laisse **Email** activé ;
    - **désactive “Confirm email”** (sinon il faut valider un email à chaque compte).

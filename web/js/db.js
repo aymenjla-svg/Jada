@@ -6,7 +6,7 @@
 
 import { CONFIG, SYNC_ENABLED } from "./config.js";
 
-const COLLECTIONS = ["events", "measurements", "vaccines", "appointments", "medical_entries", "daily_photos"];
+const COLLECTIONS = ["events", "measurements", "vaccines", "appointments", "medical_entries", "daily_photos", "milk_stock"];
 
 function blobToDataURL(blob) {
   return new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
