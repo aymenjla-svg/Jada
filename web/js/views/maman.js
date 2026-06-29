@@ -3,7 +3,7 @@ import { uuid, fmtTime, fmtElapsed, relative, ageDescription, STOOL_COLORS } fro
 import { openWelcomeSheet } from "../welcome.js";
 import { computeReminders } from "../notify.js";
 import { emoji, eventVisual } from "../icons.js";
-import { addMilkToStock } from "./stock.js";
+import { addMilkToStock, consumeFromStock, availableStockMl } from "./stock.js";
 
 const REF_INTERVAL = 3 * 3600 * 1000; // 3 h de référence pour remplir l'anneau
 
@@ -13,7 +13,10 @@ function describe(e) {
   const v = eventVisual(e);
   let text = e.type;
   if (e.type === "feeding") {
-    if (p.kind === "biberon") text = `Biberon${p.volumeMl ? ` · ${p.volumeMl} ml` : ""}`;
+    if (p.kind === "biberon") {
+      const m = p.milk === "poudre" ? " · poudre" : p.milk === "maternel" ? " · maternel" : "";
+      text = `Biberon${p.volumeMl ? ` · ${p.volumeMl} ml` : ""}${m}`;
+    }
     else {
       const side = p.side === "gauche" ? " G" : p.side === "droite" ? " D" : "";
       const dur = p.durationSec ? ` · ${Math.round(p.durationSec / 60)} min` : "";
@@ -297,6 +300,7 @@ function editFeedSheet(ctx, ev) {
   const range = el("input", { type: "range", min: 0, max: 60, value: minutes,
     oninput: () => (minLabel.textContent = `Durée : ${range.value} min`) });
   const vol = el("input", { type: "number", inputmode: "numeric", value: p.volumeMl || "" });
+  const milkSeg = segmented([{ id: "maternel", label: "Lait maternel" }, { id: "poudre", label: "Lait en poudre" }], p.milk || "maternel");
   const when = el("input", { type: "datetime-local", value: toLocal(ev.timestamp) });
 
   const del = el("button", { class: "sheet-secondary", style: "color:#c0392b;margin-top:8px",
@@ -304,7 +308,7 @@ function editFeedSheet(ctx, ev) {
     "🗑 Supprimer");
 
   const content = el("div", {}, [
-    isBib ? field("Volume (ml)", vol)
+    isBib ? el("div", {}, [field("Volume (ml)", vol), field("Type de lait", milkSeg.node)])
           : el("div", {}, [field("Côté", side.node), el("div", { class: "field" }, [minLabel, range])]),
     field("Quand ?", when),
     del,
@@ -312,7 +316,7 @@ function editFeedSheet(ctx, ev) {
 
   openSheet(isBib ? "Modifier le biberon" : "Modifier la tétée", content, { onSave: async () => {
     const payload = isBib
-      ? { kind: "biberon", volumeMl: Number(vol.value) || null }
+      ? { kind: "biberon", volumeMl: Number(vol.value) || null, milk: milkSeg.get() }
       : { kind: "sein", side: side.get(), durationSec: Number(range.value) * 60 };
     await ctx.store.update("events", ev.id, { payload, timestamp: fromLocal(when.value) });
     closeSheet(); toast("Tétée modifiée");
@@ -451,21 +455,35 @@ function sheetFeeding(ctx, forceKind) {
     oninput: () => (minLabel.textContent = `Durée : ${range.value} min`) });
   const seinBox = el("div", {}, [field("Côté", side.node), el("div", { class: "field" }, [minLabel, range])]);
   const vol = el("input", { type: "number", inputmode: "numeric", placeholder: "120" });
-  const bibBox = field("Volume (ml)", vol);
+  // Biberon : lait maternel ou lait en poudre (on retient le dernier choix).
+  let milk = localStorage.getItem("jada:lastBibMilk") || "maternel";
+  const milkSeg = segmented([{ id: "maternel", label: "Lait maternel" }, { id: "poudre", label: "Lait en poudre" }], milk, (v) => { milk = v; updateStockOpt(); });
+  const avail = availableStockMl(ctx);
+  const toStock = el("input", { type: "checkbox" });
+  toStock.checked = avail > 0;
+  const stockOpt = el("label", { class: "stock-opt" }, [toStock, el("span", {}, `Décompter du stock de lait (${avail} ml dispo)`)]);
+  const bibBox = el("div", {}, [field("Volume (ml)", vol), field("Type de lait", milkSeg.node), stockOpt]);
   const common = commonFields(ctx);
 
-  function toggle() { seinBox.style.display = kind === "sein" ? "" : "none"; bibBox.style.display = kind === "biberon" ? "" : "none"; }
+  function updateStockOpt() { stockOpt.style.display = (kind === "biberon" && milk === "maternel") ? "" : "none"; }
+  function toggle() { seinBox.style.display = kind === "sein" ? "" : "none"; bibBox.style.display = kind === "biberon" ? "" : "none"; updateStockOpt(); }
   const content = el("div", {}, [field("Type", seg.node), seinBox, bibBox, common.node]);
   toggle();
 
   openSheet("Tétée", content, { onSave: async () => {
     const base = common.read();
+    const ml = Number(vol.value) || null;
     const payload = kind === "sein"
       ? { kind: "sein", side: side.get(), durationSec: Number(range.value) * 60 }
-      : { kind: "biberon", volumeMl: Number(vol.value) || null };
+      : { kind: "biberon", volumeMl: ml, milk };
+    if (kind === "biberon") localStorage.setItem("jada:lastBibMilk", milk);
     await ctx.store.insert("events", { id: uuid(), type: "feeding", ...base, payload, note: null });
+    let took = 0;
+    if (kind === "biberon" && milk === "maternel" && toStock.checked && ml) took = await consumeFromStock(ctx, ml);
     const woke = await endOngoingSleep(ctx, base.timestamp); // un repas réveille le bébé
-    closeSheet(); toast(woke ? "Repas enregistré · sommeil terminé" : (kind === "biberon" ? "Biberon enregistré" : "Tétée enregistrée"));
+    const what = kind === "biberon" ? "Biberon enregistré" : "Tétée enregistrée";
+    closeSheet();
+    toast(woke ? "Repas enregistré · sommeil terminé" : (took ? `${what} · −${took} ml du stock` : what));
   }});
 }
 

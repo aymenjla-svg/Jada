@@ -41,6 +41,28 @@ export async function addMilkToStock(ctx, { volumeMl, expressedAtISO, storage = 
   });
 }
 
+// Lait disponible (ml) dans le stock, tous lots « dispo » confondus.
+export function availableStockMl(ctx) {
+  return dispo(ctx.cache.milk_stock).reduce((s, b) => s + (b.volume_ml || 0), 0);
+}
+
+// Décompte un volume du stock (lots qui périment en premier d'abord). Renvoie le ml réellement pris.
+export async function consumeFromStock(ctx, volumeMl) {
+  let need = Math.round(volumeMl || 0);
+  if (need <= 0) return 0;
+  const lots = dispo(ctx.cache.milk_stock).sort((a, b) => expiresAt(a) - expiresAt(b));
+  let used = 0;
+  for (const b of lots) {
+    if (need <= 0) break;
+    const take = Math.min(b.volume_ml, need);
+    const left = b.volume_ml - take;
+    if (left <= 0) await ctx.store.update("milk_stock", b.id, { volume_ml: 0, status: "fini", used_at: new Date().toISOString() });
+    else await ctx.store.update("milk_stock", b.id, { volume_ml: left });
+    need -= take; used += take;
+  }
+  return used;
+}
+
 // Section à insérer dans l'onglet Santé : total + lots disponibles + bouton d'ajout.
 export function stockSection(ctx) {
   const lots = dispo(ctx.cache.milk_stock).sort((a, b) => expiresAt(a) - expiresAt(b)); // périme en premier

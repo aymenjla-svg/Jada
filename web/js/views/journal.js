@@ -31,6 +31,8 @@ function dayStats(events, day) {
   const tetees = feeds.filter((e) => (e.payload?.kind || "sein") === "sein");
   const bibs = feeds.filter((e) => e.payload?.kind === "biberon");
   const bibMl = bibs.reduce((s, e) => s + (e.payload?.volumeMl || 0), 0);
+  const bibMat = bibs.filter((e) => e.payload?.milk === "maternel").length;
+  const bibPou = bibs.filter((e) => e.payload?.milk === "poudre").length;
   const teteeSec = tetees.reduce((s, e) => s + (e.payload?.durationSec || 0), 0);
   const sleeps = evs.filter((e) => e.type === "sleep");
   const sleepSec = sleeps.reduce((s, e) => s + (e.payload?.durationSec || 0), 0);
@@ -45,7 +47,7 @@ function dayStats(events, day) {
     total: evs.length,
     repas: tetees.length + bibs.length,
     tetees: tetees.length, teteeSec,
-    bibs: bibs.length, bibMl,
+    bibs: bibs.length, bibMl, bibMat, bibPou,
     sleepSec, nDodos: sleeps.length,
     diapers: diapers.length, pipi, caca,
     hydra: hydra.length, hydraMl,
@@ -86,7 +88,7 @@ export function renderJournal(ctx) {
     content = el("div", { class: "jgrid" }, [
       statCard("repas", "feed", String(s.repas), "Repas", "tétées + biberons"),
       statCard("tetee", "feed", String(s.tetees), "Tétées", s.teteeSec ? fmtDur(s.teteeSec) + " au sein" : null),
-      statCard("biberon", "bot", String(s.bibs), "Biberons", s.bibMl ? s.bibMl + " ml" : null),
+      statCard("biberon", "bot", String(s.bibs), "Biberons", [s.bibMl ? s.bibMl + " ml" : null, (s.bibMat || s.bibPou) ? `${s.bibMat} mat./${s.bibPou} pdr` : null].filter(Boolean).join(" · ") || null),
       statCard("sommeil", "sleep", fmtDur(s.sleepSec), "Sommeil", s.nDodos + (s.nDodos > 1 ? " dodos" : " dodo")),
       statCard("couche", "diap", String(s.diapers), "Couches", `${s.pipi} pipi · ${s.caca} caca`),
       statCard("eau", "water", s.hydraMl ? s.hydraMl + " ml" : "—", "Hydratation", s.hydra ? s.hydra + " fois" : null),
