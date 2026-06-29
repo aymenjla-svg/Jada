@@ -82,6 +82,50 @@ function barChart(series, metric) {
   return wrap;
 }
 
+// Comparaison des modèles de tire-lait (volume moyen, durée, rendement).
+function pumpByBrand(events) {
+  const pumps = (events || []).filter((e) => e.type === "pump");
+  if (!pumps.length) return null;
+
+  const map = {};
+  pumps.forEach((e) => {
+    const p = e.payload || {};
+    const name = p.pump || "Non précisé";
+    const b = map[name] || (map[name] = { name, n: 0, nVol: 0, ml: 0, sec: 0 });
+    b.n++;
+    if (p.volumeMl) { b.ml += p.volumeMl; b.nVol++; }
+    b.sec += p.durationSec || 0;
+  });
+
+  const rows = Object.values(map).map((b) => ({
+    name: b.name,
+    n: b.n,
+    avgMl: b.nVol ? b.ml / b.nVol : 0,
+    avgMin: b.n ? b.sec / 60 / b.n : 0,
+    mlPerMin: b.sec ? b.ml / (b.sec / 60) : 0,
+  })).sort((a, b) => b.avgMl - a.avgMl);
+
+  const maxMl = Math.max(1, ...rows.map((r) => r.avgMl));
+
+  const card = el("div", { class: "card tight" });
+  rows.forEach((r) => {
+    const sub = [
+      `${r.n} séance${r.n > 1 ? "s" : ""}`,
+      r.avgMin ? `${Math.round(r.avgMin)} min` : null,
+      r.mlPerMin ? `${r.mlPerMin.toFixed(1)} ml/min` : null,
+    ].filter(Boolean).join(" · ");
+    card.appendChild(el("div", { class: "brand-row" }, [
+      el("div", { class: "brand-top" }, [
+        el("span", { class: "brand-name" }, r.name),
+        el("span", { class: "brand-val" }, r.avgMl ? `${Math.round(r.avgMl)} ml` : "—"),
+      ]),
+      el("div", { class: "brand-bar" }, el("span", { style: `width:${Math.round((r.avgMl / maxMl) * 100)}%` })),
+      el("div", { class: "brand-sub" }, sub),
+    ]));
+  });
+  return [el("div", { class: "section-title" }, "Tire-lait par modèle"), card];
+}
+
 export function renderStats(ctx) {
   const metric = METRICS.find((m) => m.id === metricId) || METRICS[0];
   const series = buildSeries(ctx.cache.events || [], rangeDays);
@@ -100,10 +144,13 @@ export function renderStats(ctx) {
     el("div", { class: "ss-cell" }, [el("div", { class: "ss-val" }, metric.fmt(max)), el("div", { class: "ss-lab" }, "record")]),
   ]);
 
+  const brands = pumpByBrand(ctx.cache.events);
+
   return el("div", { class: "screen active" }, [
     el("div", { class: "title-page" }, "Stats"),
     el("div", { class: "stats-controls" }, [metricSeg.node, el("div", { style: "height:8px" }), rangeSeg.node]),
     el("div", { class: "card" }, [summary, el("div", { style: "height:8px" }), barChart(series, metric)]),
+    ...(brands || []),
     el("div", { class: "disclaimer" }, "Évolution jour par jour. La ligne pointillée indique la moyenne de la période."),
   ]);
 }
