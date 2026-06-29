@@ -39,6 +39,8 @@ function dayStats(events, day) {
   const caca = diapers.filter((e) => ["caca", "mixte"].includes(e.payload?.kind)).length;
   const hydra = evs.filter((e) => e.type === "hydration");
   const hydraMl = hydra.reduce((s, e) => s + (e.payload?.volumeMl || 0), 0);
+  const pumps = evs.filter((e) => e.type === "pump");
+  const pumpMl = pumps.reduce((s, e) => s + (e.payload?.volumeMl || 0), 0);
   return {
     total: evs.length,
     repas: tetees.length + bibs.length,
@@ -47,6 +49,7 @@ function dayStats(events, day) {
     sleepSec, nDodos: sleeps.length,
     diapers: diapers.length, pipi, caca,
     hydra: hydra.length, hydraMl,
+    pumps: pumps.length, pumpMl,
   };
 }
 
@@ -87,6 +90,7 @@ export function renderJournal(ctx) {
       statCard("sommeil", "sleep", fmtDur(s.sleepSec), "Sommeil", s.nDodos + (s.nDodos > 1 ? " dodos" : " dodo")),
       statCard("couche", "diap", String(s.diapers), "Couches", `${s.pipi} pipi · ${s.caca} caca`),
       statCard("eau", "water", s.hydraMl ? s.hydraMl + " ml" : "—", "Hydratation", s.hydra ? s.hydra + " fois" : null),
+      s.pumps ? statCard("lait", "pump", s.pumpMl ? s.pumpMl + " ml" : String(s.pumps), "Tire-lait", s.pumps + (s.pumps > 1 ? " séances" : " séance")) : null,
     ]);
   }
 

@@ -451,3 +451,13 @@ body{ background:linear-gradient(170deg,#FBECE8 0%,#F6E2EE 45%,#EDE6FB 100%); }
 
 .tabbar .tab{ flex:1 1 0; min-width:0; }
 .tabbar .tab > div:last-child{ white-space:nowrap; }
+
+/* Tire-lait (catégorie pump) */
+:root{ --pump:#1FA8A0; --pumpBg:rgba(31,168,160,.14); }
+.i-pump{ background:var(--pumpBg); }
+/* Grille d'actions à 5 (ajout du tire-lait) */
+.actions{ grid-template-columns:repeat(5,1fr); gap:8px; }
+.actions .chip{ padding:13px 2px; }
+.actions .chip .ic{ width:42px; height:42px; }
+.actions .chip .ic .emo{ width:24px; height:24px; }
+.actions .chip .cap{ font-size:11px; line-height:1.15; }

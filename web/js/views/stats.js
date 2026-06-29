@@ -20,13 +20,14 @@ const METRICS = [
   { id: "biberon", label: "Bib.",    cat: "bot",   get: (b) => b.bibMl,           fmt: (v) => Math.round(v) + " ml" },
   { id: "couches", label: "Couches", cat: "diap",  get: (b) => b.diapers,         fmt: (v) => String(Math.round(v)) },
   { id: "hydra",   label: "Hydra",   cat: "water", get: (b) => b.hydraMl,         fmt: (v) => Math.round(v) + " ml" },
+  { id: "pump",    label: "Tire-l.", cat: "pump",  get: (b) => b.pumpMl,          fmt: (v) => Math.round(v) + " ml" },
 ];
 
 function buildSeries(events, days) {
   const list = [];
   for (let i = days - 1; i >= 0; i--) list.push(shiftDay(todayISO(), -i));
   const map = {};
-  list.forEach((d) => (map[d] = { repas: 0, tetees: 0, bibMl: 0, sleepSec: 0, diapers: 0, hydraMl: 0 }));
+  list.forEach((d) => (map[d] = { repas: 0, tetees: 0, bibMl: 0, sleepSec: 0, diapers: 0, hydraMl: 0, pumpMl: 0 }));
   (events || []).forEach((e) => {
     if (e.payload && e.payload.ongoing) return;
     const b = map[localDay(e.timestamp)];
@@ -36,6 +37,7 @@ function buildSeries(events, days) {
     else if (e.type === "sleep") b.sleepSec += p.durationSec || 0;
     else if (e.type === "diaper") b.diapers++;
     else if (e.type === "hydration") b.hydraMl += p.volumeMl || 0;
+    else if (e.type === "pump") b.pumpMl += p.volumeMl || 0;
   });
   return list.map((d) => ({ day: d, bucket: map[d] }));
 }

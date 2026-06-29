@@ -17,5 +17,6 @@ export function eventVisual(e) {
     return { emo, cat: "diap" };
   }
   if (e.type === "sleep") return { emo: "sommeil", cat: "sleep" };
+  if (e.type === "pump") return { emo: "lait", cat: "pump" };
   return { emo: "coeur", cat: "feed" };
 }

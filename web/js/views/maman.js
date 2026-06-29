@@ -25,6 +25,9 @@ function describe(e) {
     text = `Couche ${k.toLowerCase()}${p.stoolColor ? ` · ${p.stoolColor}` : ""}`;
   } else if (e.type === "sleep") {
     text = `Sommeil${p.durationSec ? ` · ${fmtDur(p.durationSec)}` : ""}`;
+  } else if (e.type === "pump") {
+    const sd = p.side === "gauche" ? " G" : p.side === "droite" ? " D" : p.side === "deux" ? " 2 seins" : "";
+    text = `Tire-lait${sd}${p.volumeMl ? ` · ${p.volumeMl} ml` : ""}`;
   }
   return { emo: v.emo, cat: v.cat, text };
 }
@@ -107,6 +110,7 @@ export function renderMaman(ctx) {
     el("div", { class: "actions" }, [
       chip("tetee", "Tétée", "feed", () => sheetFeeding(ctx)),
       chip("biberon", "Biberon", "bot", () => sheetFeeding(ctx, "biberon")),
+      chip("lait", "Tire-lait", "pump", () => sheetPump(ctx)),
       chip("eau", "Hydrat.", "water", () => sheetHydration(ctx)),
       chip("couche", "Couche", "diap", () => sheetDiaper(ctx)),
     ]),
@@ -405,7 +409,7 @@ function editSleepSheet(ctx, ev) {
     } });
 }
 
-const EDITORS = { feeding: editFeedSheet, hydration: editHydrationSheet, diaper: editDiaperSheet, sleep: editSleepSheet };
+const EDITORS = { feeding: editFeedSheet, hydration: editHydrationSheet, diaper: editDiaperSheet, sleep: editSleepSheet, pump: editPumpSheet };
 
 // ---------- Résumé du jour ----------
 function daySummary(events) {
@@ -501,6 +505,53 @@ function sheetDiaper(ctx) {
     const woke = (kind === "caca" || kind === "mixte") ? await endOngoingSleep(ctx, base.timestamp) : false;
     closeSheet(); toast(woke ? "Couche enregistrée · sommeil terminé" : "Couche enregistrée");
   }});
+}
+
+const PUMPS = ["Momcozy M5", "Momcozy S12", "Medela Symphony", "Medela Swing", "Elvie", "Willow", "Spectra S1", "Spectra S2", "Lansinoh", "Autre"];
+
+function pumpSelect(initial) {
+  const opts = [el("option", { value: "" }, "— Tire-lait —")];
+  PUMPS.forEach((p) => opts.push(el("option", Object.assign({ value: p }, p === initial ? { selected: "" } : {}), p)));
+  return el("select", {}, opts);
+}
+
+function sheetPump(ctx) {
+  const side = segmented([{ id: "deux", label: "2 seins" }, { id: "gauche", label: "Gauche" }, { id: "droite", label: "Droite" }], "deux");
+  const vol = el("input", { type: "number", inputmode: "numeric", placeholder: "120" });
+  const minLabel = el("label", {}, "Durée : 15 min");
+  const range = el("input", { type: "range", min: 0, max: 45, value: 15, oninput: () => (minLabel.textContent = `Durée : ${range.value} min`) });
+  const sel = pumpSelect(localStorage.getItem("jada:lastPump") || "");
+  const common = commonFields(ctx);
+  const content = el("div", {}, [
+    field("Côté", side.node),
+    field("Volume exprimé (ml)", vol),
+    el("div", { class: "field" }, [minLabel, range]),
+    field("Tire-lait", sel),
+    common.node,
+  ]);
+  openSheet("Tire-lait", content, { onSave: async () => {
+    if (sel.value) localStorage.setItem("jada:lastPump", sel.value);
+    await ctx.store.insert("events", { id: uuid(), type: "pump", ...common.read(),
+      payload: { side: side.get(), volumeMl: Number(vol.value) || null, durationSec: Number(range.value) * 60, pump: sel.value || null }, note: null });
+    closeSheet(); toast("Tire-lait enregistré");
+  }});
+}
+
+function editPumpSheet(ctx, ev) {
+  const p = ev.payload || {};
+  const side = segmented([{ id: "deux", label: "2 seins" }, { id: "gauche", label: "Gauche" }, { id: "droite", label: "Droite" }], p.side || "deux");
+  const vol = el("input", { type: "number", inputmode: "numeric", value: p.volumeMl || "" });
+  const minutes = p.durationSec ? Math.round(p.durationSec / 60) : 0;
+  const minLabel = el("label", {}, `Durée : ${minutes} min`);
+  const range = el("input", { type: "range", min: 0, max: 60, value: minutes, oninput: () => (minLabel.textContent = `Durée : ${range.value} min`) });
+  const sel = pumpSelect(p.pump || "");
+  const when = el("input", { type: "datetime-local", value: toLocal(ev.timestamp) });
+  openSheet("Modifier le tire-lait",
+    el("div", {}, [field("Côté", side.node), field("Volume (ml)", vol), el("div", { class: "field" }, [minLabel, range]), field("Tire-lait", sel), field("Quand ?", when), delButton(ctx, ev, "Supprimer cette séance ?")]),
+    { onSave: async () => {
+      await ctx.store.update("events", ev.id, { payload: { side: side.get(), volumeMl: Number(vol.value) || null, durationSec: Number(range.value) * 60, pump: sel.value || null }, timestamp: fromLocal(when.value) });
+      closeSheet(); toast("Tire-lait modifié");
+    } });
 }
 
 // ---------- dates input local ----------
