@@ -68,19 +68,28 @@ export function renderMaman(ctx) {
     lastFeed ? el("div", { class: "sub" }, "à " + fmtTime(eventTime(lastFeed))) : null,
   ]));
 
-  // Dernier événement
-  const lastCard = el("div", { class: "card" });
-  if (lastFeed) {
-    const d = describe(lastFeed);
-    lastCard.appendChild(el("div", { class: "last-row" }, [
+  // Derniers repas : dernière tétée au sein ET dernier biberon, séparément.
+  const lastSein = completedFeeds.filter((e) => (e.payload?.kind || "sein") === "sein").sort((a, b) => eventTime(b) - eventTime(a))[0];
+  const lastBib = completedFeeds.filter((e) => e.payload?.kind === "biberon").sort((a, b) => eventTime(b) - eventTime(a))[0];
+  const feedRow = (ev) => {
+    const d = describe(ev);
+    const editor = EDITORS[ev.type];
+    const row = el("div", { class: "last-row" + (editor ? " tappable" : "") }, [
       el("div", { class: "avatar i-" + d.cat }, emoji(d.emo)),
       el("div", {}, [
         el("div", { class: "t" }, d.text),
-        el("div", { class: "s" }, `${relative(eventTime(lastFeed))} · par ${cgLabel(lastFeed.created_by)}`),
+        el("div", { class: "s" }, `${relative(eventTime(ev))} · par ${cgLabel(ev.created_by)}`),
       ]),
-    ]));
+    ]);
+    if (editor) row.onclick = () => editor(ctx, ev);
+    return row;
+  };
+  const lastCard = el("div", { class: "card" });
+  if (!lastSein && !lastBib) {
+    lastCard.appendChild(el("div", { class: "empty" }, "Aucun repas encore. Loggez la première tétée 👇"));
   } else {
-    lastCard.appendChild(el("div", { class: "empty" }, "Aucun événement encore. Loggez la première tétée 👇"));
+    if (lastSein) lastCard.appendChild(feedRow(lastSein));
+    if (lastBib) lastCard.appendChild(feedRow(lastBib));
   }
 
   // Tétée minutée : bouton « Commencer » ou carte « en cours ».
@@ -200,7 +209,8 @@ const byTimeDesc = (a, b) => new Date(b.timestamp) - new Date(a.timestamp);
 function eventTime(e) {
   const p = e.payload || {};
   const start = new Date(e.timestamp).getTime();
-  if ((e.type === "feeding" || e.type === "sleep") && p.durationSec) return start + p.durationSec * 1000;
+  // Fin = début + durée, mais jamais dans le futur (un repas terminé ne peut pas finir « plus tard »).
+  if ((e.type === "feeding" || e.type === "sleep") && p.durationSec) return Math.min(start + p.durationSec * 1000, Date.now());
   return start;
 }
 
