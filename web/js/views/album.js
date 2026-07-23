@@ -1,8 +1,8 @@
 import { el, openSheet, closeSheet, toast, field } from "../ui.js";
-import { uuid, fmtFull, fmtDay } from "../data.js";
+import { uuid, fmtFull, fmtDay, caregiverLabel } from "../data.js";
 import { emoji } from "../icons.js";
 
-const cg = (id) => (id === "papa" ? "Papa" : "Maman");
+const cg = (id) => caregiverLabel(id);
 const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 export function renderAlbum(ctx) {

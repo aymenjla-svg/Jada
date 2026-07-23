@@ -1,5 +1,7 @@
 // Helpers d'interface partagés.
 
+import { CAREGIVERS } from "./data.js";
+
 // Crée un élément : el("div", {class:"card"}, [child, "texte"])
 export function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
@@ -89,5 +91,6 @@ export function segmented(options, initial, onChange) {
 }
 
 export function caregiverToggle(initial) {
-  return segmented([{ id: "maman", label: "Maman" }, { id: "papa", label: "Papa" }], initial);
+  const options = Object.values(CAREGIVERS).map((c) => ({ id: c.id, label: c.label }));
+  return segmented(options, initial);
 }

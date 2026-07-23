@@ -1,5 +1,5 @@
 import { el, ringSVG, openSheet, closeSheet, toast, field, segmented, caregiverToggle } from "../ui.js";
-import { uuid, fmtTime, fmtElapsed, relative, ageDescription, STOOL_COLORS } from "../data.js";
+import { uuid, fmtTime, fmtElapsed, relative, ageDescription, STOOL_COLORS, CAREGIVER_IDS, caregiverLabel } from "../data.js";
 import { openWelcomeSheet } from "../welcome.js";
 import { computeReminders } from "../notify.js";
 import { emoji, eventVisual } from "../icons.js";
@@ -178,13 +178,16 @@ function chip(emoName, cap, cat, onclick) {
 function caregiverBadge(ctx) {
   const b = el("button", { class: "badge" }, [emoji("personne"), " " + cgLabel(ctx.caregiver)]);
   b.onclick = () => {
-    ctx.setCaregiver(ctx.caregiver === "maman" ? "papa" : "maman");
+    // Cycle sur tous les soignants : Maman → Papa → Tata → Maman.
+    const i = CAREGIVER_IDS.indexOf(ctx.caregiver);
+    const next = CAREGIVER_IDS[(i + 1) % CAREGIVER_IDS.length];
+    ctx.setCaregiver(next);
     toast("Vous êtes : " + cgLabel(ctx.caregiver));
   };
   return b;
 }
 
-const cgLabel = (id) => (id === "papa" ? "Papa" : "Maman");
+const cgLabel = (id) => caregiverLabel(id);
 const byTimeDesc = (a, b) => new Date(b.timestamp) - new Date(a.timestamp);
 
 // Heure « parlante » d'un événement : la FIN pour une tétée/un sommeil minuté

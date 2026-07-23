@@ -3,7 +3,14 @@
 export const CAREGIVERS = {
   maman: { id: "maman", label: "Maman" },
   papa:  { id: "papa",  label: "Papa" },
+  tata:  { id: "tata",  label: "Tata" },
 };
+
+// Ordre d'affichage / de bascule (badge « Qui suis-je ? »).
+export const CAREGIVER_IDS = Object.keys(CAREGIVERS);
+
+// Libellé d'un soignant à partir de son id (repli sur Maman si inconnu).
+export const caregiverLabel = (id) => (CAREGIVERS[id]?.label || CAREGIVERS.maman.label);
 
 export const STOOL_COLORS = [
   { id: "jaune",  label: "Jaune",  hex: "#E9C46A" },

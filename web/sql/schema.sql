@@ -16,7 +16,7 @@ create table if not exists events (
   id uuid primary key,
   type text not null,                 -- feeding | hydration | diaper
   timestamp timestamptz not null,
-  created_by text not null,           -- maman | papa
+  created_by text not null,           -- maman | papa | tata
   note text,
   payload jsonb not null default '{}',
   created_at timestamptz default now()
